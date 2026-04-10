@@ -11,8 +11,6 @@ import type { ComponentType } from 'react';
 export interface Finding {
   id: string;
   category: string;
-  /** @deprecated icon is resolved from categoryMeta by category name */
-  categoryIcon: string;
   severity: 'critical' | 'high' | 'medium' | 'low' | 'pass';
   title: string;
   location: string;

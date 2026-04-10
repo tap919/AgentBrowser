@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
-  Hexagon, Plus, Shield, Route, Brain, Play, Check, Wrench, CheckCheck, PartyPopper, CheckCircle2
+  Hexagon, Plus, Shield, Route, Brain,
 } from 'lucide-react';
 import ParticleBackground from '@/components/ParticleBackground';
 import ProjectForm, { ProjectData } from '@/components/ProjectForm';
@@ -246,38 +246,38 @@ function AppContent() {
 
     if (subName.includes('Security')) {
       if (!isSecondAudit) {
-        addFinding({ category: 'security', categoryIcon: 'shield', severity: 'high', title: 'Missing CSRF token on settings endpoint', location: 'api/routes.ts:156', fixed: false, phase: phaseDef.id });
-        addFinding({ category: 'security', categoryIcon: 'shield', severity: 'medium', title: 'Rate limiting not configured on login', location: 'api/auth.ts:42', fixed: false, phase: phaseDef.id });
+        addFinding({ category: 'security', severity: 'high', title: 'Missing CSRF token on settings endpoint', location: 'api/routes.ts:156', fixed: false, phase: phaseDef.id });
+        addFinding({ category: 'security', severity: 'medium', title: 'Rate limiting not configured on login', location: 'api/auth.ts:42', fixed: false, phase: phaseDef.id });
       } else {
-        addFinding({ category: 'security', categoryIcon: 'shield', severity: 'pass', title: 'All security checks passed', location: 'Full scan', fixed: true, phase: phaseDef.id });
+        addFinding({ category: 'security', severity: 'pass', title: 'All security checks passed', location: 'Full scan', fixed: true, phase: phaseDef.id });
       }
     } else if (subName.includes('Race')) {
       if (!isSecondAudit) {
-        addFinding({ category: 'raceConditions', categoryIcon: 'lock', severity: 'high', title: 'Token refresh race condition detected', location: 'auth/token.ts:47', fixed: false, phase: phaseDef.id });
+        addFinding({ category: 'raceConditions', severity: 'high', title: 'Token refresh race condition detected', location: 'auth/token.ts:47', fixed: false, phase: phaseDef.id });
       } else {
-        addFinding({ category: 'raceConditions', categoryIcon: 'lock', severity: 'pass', title: 'No race conditions detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
+        addFinding({ category: 'raceConditions', severity: 'pass', title: 'No race conditions detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
       }
     } else if (subName.includes('Type')) {
-      addFinding({ category: 'typeSafety', categoryIcon: 'code', severity: 'medium', title: '2 unsafe type casts found and fixed', location: 'utils/transform.ts:5', fixed: false, phase: phaseDef.id });
-      addFinding({ category: 'typeSafety', categoryIcon: 'code', severity: 'pass', title: 'All null checks verified', location: 'Full scan', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'typeSafety', severity: 'medium', title: '2 unsafe type casts found and fixed', location: 'utils/transform.ts:5', fixed: false, phase: phaseDef.id });
+      addFinding({ category: 'typeSafety', severity: 'pass', title: 'All null checks verified', location: 'Full scan', fixed: true, phase: phaseDef.id });
     } else if (subName.includes('Static') || subName.includes('complexity')) {
-      addFinding({ category: 'codeQuality', categoryIcon: 'gem', severity: 'low', title: 'Complex function simplified (complexity 18 → 7)', location: 'auth/login.ts:47', fixed: false, phase: phaseDef.id });
-      addFinding({ category: 'codeQuality', categoryIcon: 'gem', severity: 'pass', title: 'No dead code detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'codeQuality', severity: 'low', title: 'Complex function simplified (complexity 18 → 7)', location: 'auth/login.ts:47', fixed: false, phase: phaseDef.id });
+      addFinding({ category: 'codeQuality', severity: 'pass', title: 'No dead code detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
     } else if (subName.includes('Smell') || subName.includes('duplication')) {
-      addFinding({ category: 'codeQuality', categoryIcon: 'gem', severity: 'low', title: 'Duplicated validation extracted to shared utility', location: 'auth/middleware.ts:23', fixed: false, phase: phaseDef.id });
-      addFinding({ category: 'codeQuality', categoryIcon: 'gem', severity: 'pass', title: 'No god classes detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'codeQuality', severity: 'low', title: 'Duplicated validation extracted to shared utility', location: 'auth/middleware.ts:23', fixed: false, phase: phaseDef.id });
+      addFinding({ category: 'codeQuality', severity: 'pass', title: 'No god classes detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
     } else if (subName.includes('Memory') || subName.includes('resource')) {
-      addFinding({ category: 'memorySafety', categoryIcon: 'cpu', severity: 'pass', title: 'No memory leaks detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'memorySafety', severity: 'pass', title: 'No memory leaks detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
     } else if (subName.includes('Dependency') || subName.includes('CVE')) {
       if (!isSecondAudit) {
-        addFinding({ category: 'dependencies', categoryIcon: 'package', severity: 'high', title: '3 dependency CVEs found and patched', location: 'package.json', fixed: false, phase: phaseDef.id });
+        addFinding({ category: 'dependencies', severity: 'high', title: '3 dependency CVEs found and patched', location: 'package.json', fixed: false, phase: phaseDef.id });
       } else {
-        addFinding({ category: 'dependencies', categoryIcon: 'package', severity: 'pass', title: 'All dependencies up to date', location: 'Full scan', fixed: true, phase: phaseDef.id });
+        addFinding({ category: 'dependencies', severity: 'pass', title: 'All dependencies up to date', location: 'Full scan', fixed: true, phase: phaseDef.id });
       }
     } else if (subName.includes('Auto-fix') || subName.includes('fix')) {
-      addFinding({ category: 'codeQuality', categoryIcon: 'gem', severity: 'pass', title: 'All fixable issues resolved automatically', location: 'Auto-fix engine', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'codeQuality', severity: 'pass', title: 'All fixable issues resolved automatically', location: 'Auto-fix engine', fixed: true, phase: phaseDef.id });
     } else if (subName.includes('verification') || subName.includes('Re-audit') || subName.includes('Final') || subName.includes('sign-off')) {
-      addFinding({ category: 'security', categoryIcon: 'shield', severity: 'pass', title: 'Verification scan: all clear', location: 'Full scan', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'security', severity: 'pass', title: 'Verification scan: all clear', location: 'Full scan', fixed: true, phase: phaseDef.id });
     }
   }, [addFinding]);
 
@@ -400,7 +400,7 @@ function AppContent() {
       metrics: { ...prev.metrics, securityScore: 97 },
     }));
     addLog('Project complete and delivered!', 'party-popper', 'text-purple-400', 'deploy');
-    addToast({ title: 'Project Delivered!', description: 'Your project is built, audited, and live.', variant: 'success' });
+    toast.success('Project Delivered!', { description: 'Your project is built, audited, and live.' });
 
     // Switch to complete view after a delay
     await wait(2000);
@@ -447,7 +447,6 @@ function AppContent() {
     for (const cat of categories) {
       addFinding({
         category: cat,
-        categoryIcon: categoryMeta[cat]?.icon || 'dot',
         severity: 'pass',
         title: `${cat} check passed`,
         location: 'Full scan',
@@ -688,16 +687,6 @@ function AppContent() {
     </div>
   );
 }
-
-const categoryMeta: Record<string, { icon: string }> = {
-  security: { icon: 'shield' },
-  performance: { icon: 'zap' },
-  typeSafety: { icon: 'code' },
-  codeQuality: { icon: 'gem' },
-  raceConditions: { icon: 'lock' },
-  memorySafety: { icon: 'cpu' },
-  dependencies: { icon: 'package' },
-};
 
 /* ═══════════════════════════════════════════
    ROOT EXPORT WITH PROVIDERS
