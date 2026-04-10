@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AppIcon } from '@/lib/icons';
 
 export interface ProjectData {
   name: string;
@@ -17,12 +18,12 @@ interface ProjectFormProps {
 }
 
 const TEMPLATES = [
-  { id: 'blank', name: 'Blank Project', icon: 'fa-file', desc: 'Start from scratch' },
-  { id: 'saas', name: 'SaaS Starter', icon: 'fa-cloud', desc: 'Multi-tenant app with billing' },
-  { id: 'ecommerce', name: 'E-Commerce', icon: 'fa-cart-shopping', desc: 'Online store with payments' },
-  { id: 'dashboard', name: 'Dashboard', icon: 'fa-chart-line', desc: 'Analytics & monitoring' },
-  { id: 'blog', name: 'Blog Platform', icon: 'fa-pen-nib', desc: 'Content management system' },
-  { id: 'api', name: 'API Backend', icon: 'fa-server', desc: 'REST/GraphQL API service' },
+  { id: 'blank', name: 'Blank Project', icon: 'file', desc: 'Start from scratch' },
+  { id: 'saas', name: 'SaaS Starter', icon: 'cloud', desc: 'Multi-tenant app with billing' },
+  { id: 'ecommerce', name: 'E-Commerce', icon: 'shopping-cart', desc: 'Online store with payments' },
+  { id: 'dashboard', name: 'Dashboard', icon: 'trending-up', desc: 'Analytics & monitoring' },
+  { id: 'blog', name: 'Blog Platform', icon: 'pen-line', desc: 'Content management system' },
+  { id: 'api', name: 'API Backend', icon: 'server', desc: 'REST/GraphQL API service' },
 ];
 
 const PROJECT_TYPES = [
@@ -84,7 +85,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
         {/* Template Selection */}
         <div className="mb-6">
           <label className="text-sm font-medium text-foreground mb-3 block">
-            <i className="fa-solid fa-shapes mr-1.5 text-primary" />
+            <AppIcon name="layers" className="inline-block w-3.5 h-3.5 mr-1.5 text-primary" />
             Project Template
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -117,7 +118,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
                     : 'border-border/50 bg-background/30 hover:border-primary/30 hover:bg-primary/5'
                 }`}
               >
-                <i className={`fa-solid ${t.icon} text-primary text-lg mb-1.5`} />
+                <AppIcon name={t.icon} className="w-5 h-5 text-primary mb-1.5" />
                 <p className="text-sm font-medium text-foreground">{t.name}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
               </button>
@@ -129,7 +130,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
           {/* Project Name */}
           <div>
             <label htmlFor="project-name" className="text-sm font-medium text-foreground mb-1.5 block">
-              <i className="fa-solid fa-pen mr-1.5 text-primary" />
+              <AppIcon name="pen-line" className="inline-block w-3.5 h-3.5 mr-1.5 text-primary" />
               Project Name
             </label>
             <input
@@ -146,7 +147,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
           {/* Description */}
           <div>
             <label htmlFor="project-desc" className="text-sm font-medium text-foreground mb-1.5 block">
-              <i className="fa-solid fa-align-left mr-1.5 text-primary" />
+              <AppIcon name="align-left" className="inline-block w-3.5 h-3.5 mr-1.5 text-primary" />
               Description
             </label>
             <textarea
@@ -164,7 +165,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="project-type" className="text-sm font-medium text-foreground mb-1.5 block">
-                <i className="fa-solid fa-layer-group mr-1.5 text-primary" />
+                <AppIcon name="layers" className="inline-block w-3.5 h-3.5 mr-1.5 text-primary" />
                 Project Type
               </label>
               <select
@@ -180,7 +181,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
             </div>
             <div>
               <label htmlFor="project-audience" className="text-sm font-medium text-foreground mb-1.5 block">
-                <i className="fa-solid fa-users mr-1.5 text-primary" />
+                <AppIcon name="users" className="inline-block w-3.5 h-3.5 mr-1.5 text-primary" />
                 Target Audience
               </label>
               <input
@@ -201,8 +202,8 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors mb-2"
             >
-              <i className={`fa-solid fa-chevron-right text-xs transition-transform duration-200 ${showAdvanced ? 'rotate-90' : ''}`} />
-              <i className="fa-solid fa-puzzle-piece text-primary" />
+              <AppIcon name="chevron-right" className={`w-3 h-3 transition-transform duration-200 ${showAdvanced ? 'rotate-90' : ''}`} />
+              <AppIcon name="puzzle" className="w-3.5 h-3.5 text-primary" />
               Services & Integrations
               <span className="text-xs text-muted-foreground">({services.length} selected)</span>
             </button>
@@ -238,12 +239,12 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
           >
             {isAnalyzing ? (
               <span className="flex items-center justify-center gap-2">
-                <i className="fa-solid fa-spinner animate-spin" />
+                <AppIcon name="loader" className="w-4 h-4 animate-spin" />
                 AI is analyzing your project...
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">
-                <i className="fa-solid fa-rocket" />
+                <AppIcon name="rocket" className="w-4 h-4" />
                 Launch Project Build
               </span>
             )}

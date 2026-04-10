@@ -1,29 +1,15 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useTheme } from 'next-themes';
+import { Moon, Sun } from 'lucide-react';
 
 export default function ThemeToggle() {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('agentbrowser-theme');
-      if (saved === 'light') {
-        document.documentElement.classList.remove('dark');
-        return false;
-      }
-      document.documentElement.classList.add('dark');
-      return true;
-    }
-    return true;
-  });
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
-  const toggle = useCallback(() => {
-    setIsDark(prev => {
-      const next = !prev;
-      document.documentElement.classList.toggle('dark', next);
-      localStorage.setItem('agentbrowser-theme', next ? 'dark' : 'light');
-      return next;
-    });
-  }, []);
+  const toggle = () => {
+    setTheme(isDark ? 'light' : 'dark');
+  };
 
   return (
     <button
@@ -35,17 +21,23 @@ export default function ThemeToggle() {
           : 'linear-gradient(135deg, oklch(0.85 0.08 80), oklch(0.9 0.06 60))',
       }}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      suppressHydrationWarning
     >
       <span
-        className={`absolute top-0.5 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 text-xs ${
+        className={`absolute top-0.5 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${
           isDark
-            ? 'left-[calc(100%-1.625rem)] text-yellow-300'
-            : 'left-0.5 text-amber-500'
+            ? 'left-[calc(100%-1.625rem)]'
+            : 'left-0.5'
         }`}
         style={{ background: isDark ? 'oklch(0.25 0.04 280)' : 'white' }}
       >
-        <i className={`fa-solid ${isDark ? 'fa-moon' : 'fa-sun'}`} />
+        {isDark ? (
+          <Moon className="w-3 h-3 text-yellow-300" />
+        ) : (
+          <Sun className="w-3 h-3 text-amber-500" />
+        )}
       </span>
     </button>
   );
 }
+

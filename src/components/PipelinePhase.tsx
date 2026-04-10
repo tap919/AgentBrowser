@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { AppIcon } from '@/lib/icons';
+import { Check, Loader2, Clock, Circle, ChevronDown, Minus } from 'lucide-react';
 
 export interface PhaseData {
   id: number;
@@ -19,11 +21,11 @@ interface PipelinePhaseProps {
   onClick: () => void;
 }
 
-const statusIcons: Record<string, string> = {
-  pending: 'fa-circle text-muted-foreground/40',
-  running: 'fa-circle-notch animate-spin text-primary',
-  completed: 'fa-circle-check text-emerald-400',
-  audit: 'fa-shield-halved text-amber-400',
+const statusIcons: Record<string, React.ReactNode> = {
+  pending: <Circle className="w-3 h-3 text-muted-foreground/40" />,
+  running: <Loader2 className="w-3 h-3 animate-spin text-primary" />,
+  completed: <Check className="w-3 h-3 text-emerald-400" />,
+  audit: <AppIcon name="shield" className="w-3 h-3 text-amber-400" />,
 };
 
 const statusGlow: Record<string, string> = {
@@ -73,9 +75,9 @@ export default function PipelinePhase({ phase, isActive, isLast, onClick }: Pipe
               }`}
             >
               {phase.status === 'completed' ? (
-                <i className="fa-solid fa-check" />
+                <Check className="w-4 h-4" />
               ) : phase.status === 'running' ? (
-                <i className="fa-solid fa-spinner animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 phase.id
               )}
@@ -85,11 +87,11 @@ export default function PipelinePhase({ phase, isActive, isLast, onClick }: Pipe
           {/* Phase Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <i className={`fa-solid ${phase.icon} text-xs ${phase.status === 'completed' ? 'text-emerald-400' : phase.status === 'running' ? 'text-primary' : 'text-muted-foreground'}`} />
+              <AppIcon name={phase.icon} className={`w-3 h-3 ${phase.status === 'completed' ? 'text-emerald-400' : phase.status === 'running' ? 'text-primary' : 'text-muted-foreground'}`} />
               <h3 className={`text-sm font-semibold truncate ${phase.status === 'completed' ? 'text-foreground' : phase.status === 'running' ? 'text-foreground' : 'text-muted-foreground'}`}>
                 {phase.name}
               </h3>
-              <i className={`fa-solid ${statusIcons[phase.status]} text-xs ml-auto flex-shrink-0`} />
+              <span className="ml-auto flex-shrink-0">{statusIcons[phase.status]}</span>
             </div>
 
             {/* Progress Bar */}
@@ -123,8 +125,8 @@ export default function PipelinePhase({ phase, isActive, isLast, onClick }: Pipe
                 {phase.estimatedTime && phase.status === 'running' && (
                   <>
                     <span className="text-[10px] text-muted-foreground/40">·</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      <i className="fa-regular fa-clock mr-0.5" />
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                      <Clock className="w-2.5 h-2.5" />
                       {phase.estimatedTime}
                     </span>
                   </>
@@ -135,7 +137,7 @@ export default function PipelinePhase({ phase, isActive, isLast, onClick }: Pipe
 
           {/* Expand/Collapse chevron */}
           {phase.subSteps.length > 0 && (
-            <i className={`fa-solid fa-chevron-down text-xs text-muted-foreground transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
           )}
         </div>
       </button>
@@ -169,13 +171,13 @@ export default function PipelinePhase({ phase, isActive, isLast, onClick }: Pipe
                   : 'text-muted-foreground/60'
               }`}
             >
-              <i className={`fa-solid ${
-                step.status === 'completed'
-                  ? 'fa-check text-[10px]'
-                  : step.status === 'running'
-                  ? 'fa-circle-notch animate-spin text-[10px]'
-                  : 'fa-minus text-[8px]'
-              }`} />
+              {step.status === 'completed' ? (
+                <Check className="w-3 h-3 flex-shrink-0" />
+              ) : step.status === 'running' ? (
+                <Loader2 className="w-3 h-3 flex-shrink-0 animate-spin" />
+              ) : (
+                <Minus className="w-2.5 h-2.5 flex-shrink-0" />
+              )}
               <span>{step.name}</span>
             </div>
           ))}

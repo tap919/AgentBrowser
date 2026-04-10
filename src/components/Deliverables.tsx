@@ -1,5 +1,14 @@
 'use client';
 
+import {
+  Globe, GitBranch, Database, FileText, TrendingUp, Shield,
+  Boxes, BarChart2, ClipboardCheck, CheckCircle2, Circle,
+  Workflow, PartyPopper, Wind, Atom, Server, Cloud, Zap, Code2,
+  ArrowUpDown,
+} from 'lucide-react';
+import type { LucideProps } from 'lucide-react';
+import type { ComponentType } from 'react';
+
 interface DeliverablesProps {
   projectName: string;
   techStack: string[];
@@ -11,27 +20,27 @@ interface DeliverablesProps {
   };
 }
 
-const TECH_ICONS: Record<string, { icon: string; color: string }> = {
-  'Next.js': { icon: 'fa-n', color: 'text-white' },
-  'TypeScript': { icon: 'fa-code', color: 'text-blue-400' },
-  'Tailwind CSS': { icon: 'fa-wind', color: 'text-cyan-400' },
-  'Prisma': { icon: 'fa-database', color: 'text-emerald-400' },
-  'Node.js': { icon: 'fa-node-js', color: 'text-green-400' },
-  'React': { icon: 'fa-atom', color: 'text-cyan-300' },
-  'PostgreSQL': { icon: 'fa-database', color: 'text-blue-300' },
-  'SQLite': { icon: 'fa-database', color: 'text-blue-200' },
-  'Vercel': { icon: 'fa-cloud', color: 'text-white' },
-  'Supabase': { icon: 'fa-bolt', color: 'text-emerald-300' },
-  'Redis': { icon: 'fa-server', color: 'text-red-400' },
+const TECH_ICONS: Record<string, { icon: ComponentType<LucideProps>; color: string }> = {
+  'Next.js': { icon: Code2, color: 'text-white' },
+  'TypeScript': { icon: Code2, color: 'text-blue-400' },
+  'Tailwind CSS': { icon: Wind, color: 'text-cyan-400' },
+  'Prisma': { icon: Database, color: 'text-emerald-400' },
+  'Node.js': { icon: Server, color: 'text-green-400' },
+  'React': { icon: Atom, color: 'text-cyan-300' },
+  'PostgreSQL': { icon: Database, color: 'text-blue-300' },
+  'SQLite': { icon: Database, color: 'text-blue-200' },
+  'Vercel': { icon: Cloud, color: 'text-white' },
+  'Supabase': { icon: Zap, color: 'text-emerald-300' },
+  'Redis': { icon: Server, color: 'text-red-400' },
 };
 
-const DELIVERABLES = [
-  { icon: 'fa-globe', color: 'text-emerald-400', bg: 'bg-emerald-500/10', name: 'Live Application', descType: 'url' },
-  { icon: 'fa-code-branch', color: 'text-purple-400', bg: 'bg-purple-500/10', name: 'Source Code', descType: 'repo' },
-  { icon: 'fa-database', color: 'text-cyan-400', bg: 'bg-cyan-500/10', name: 'Database', descType: 'db' },
-  { icon: 'fa-file-lines', color: 'text-amber-400', bg: 'bg-amber-500/10', name: 'Documentation', descType: 'docs' },
-  { icon: 'fa-chart-line', color: 'text-pink-400', bg: 'bg-pink-500/10', name: 'Analytics', descType: 'analytics' },
-  { icon: 'fa-shield-halved', color: 'text-orange-400', bg: 'bg-orange-500/10', name: 'Security Report', descType: 'security' },
+const DELIVERABLES: { icon: ComponentType<LucideProps>; color: string; bg: string; name: string; descType: string }[] = [
+  { icon: Globe, color: 'text-emerald-400', bg: 'bg-emerald-500/10', name: 'Live Application', descType: 'url' },
+  { icon: GitBranch, color: 'text-purple-400', bg: 'bg-purple-500/10', name: 'Source Code', descType: 'repo' },
+  { icon: Database, color: 'text-cyan-400', bg: 'bg-cyan-500/10', name: 'Database', descType: 'db' },
+  { icon: FileText, color: 'text-amber-400', bg: 'bg-amber-500/10', name: 'Documentation', descType: 'docs' },
+  { icon: TrendingUp, color: 'text-pink-400', bg: 'bg-pink-500/10', name: 'Analytics', descType: 'analytics' },
+  { icon: Shield, color: 'text-orange-400', bg: 'bg-orange-500/10', name: 'Security Report', descType: 'security' },
 ];
 
 const CHECKLIST_ITEMS = [
@@ -65,7 +74,7 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-semibold mb-3">
-          <i className="fa-solid fa-party-horn" />
+          <PartyPopper className="w-4 h-4" />
           Project Delivered Successfully
         </div>
         <h2 className="text-xl sm:text-2xl font-bold text-foreground">{projectName}</h2>
@@ -81,7 +90,7 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
           >
             <div className="flex items-start gap-3">
               <div className={`w-10 h-10 rounded-lg ${del.bg} flex items-center justify-center flex-shrink-0`}>
-                <i className={`fa-solid ${del.icon} ${del.color}`} />
+                <del.icon className={`w-5 h-5 ${del.color}`} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{del.name}</p>
@@ -95,15 +104,15 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
       {/* Tech Stack */}
       <div className="p-4 rounded-xl border border-border/30 bg-background/20">
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <i className="fa-solid fa-cubes text-primary" />
+          <Boxes className="w-3.5 h-3.5 text-primary" />
           Tech Stack
         </h3>
         <div className="flex flex-wrap gap-2">
           {techStack.map((tech, i) => {
-            const meta = TECH_ICONS[tech] || { icon: 'fa-circle-dot', color: 'text-muted-foreground' };
+            const meta = TECH_ICONS[tech] || { icon: Code2, color: 'text-muted-foreground' };
             return (
               <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/30 border border-border/20 text-xs font-medium text-foreground/80 hover:border-primary/30 transition-colors">
-                <i className={`fa-solid ${meta.icon} ${meta.color} text-[10px]`} />
+                <meta.icon className={`w-3 h-3 ${meta.color}`} />
                 {tech}
               </span>
             );
@@ -116,7 +125,7 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
         {/* Project Statistics */}
         <div className="p-4 rounded-xl border border-border/30 bg-background/20">
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <i className="fa-solid fa-chart-bar text-cyan-400" />
+            <BarChart2 className="w-3.5 h-3.5 text-cyan-400" />
             Project Statistics
           </h3>
           <div className="grid grid-cols-2 gap-3">
@@ -142,13 +151,17 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
         {/* Deployment Checklist */}
         <div className="p-4 rounded-xl border border-border/30 bg-background/20">
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <i className="fa-solid fa-clipboard-check text-emerald-400" />
+            <ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" />
             Deployment Checklist
           </h3>
           <div className="space-y-1.5">
             {CHECKLIST_ITEMS.map((item, i) => (
               <div key={i} className="flex items-center gap-2 text-xs">
-                <i className={`fa-solid ${item.done ? 'fa-check-circle text-emerald-400' : 'fa-circle text-muted-foreground/30'}`} />
+                {item.done ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                ) : (
+                  <Circle className="w-3.5 h-3.5 text-muted-foreground/30 flex-shrink-0" />
+                )}
                 <span className={item.done ? 'text-foreground/80' : 'text-muted-foreground'}>{item.label}</span>
               </div>
             ))}
@@ -159,7 +172,7 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
       {/* Architecture Diagram (simplified) */}
       <div className="p-4 rounded-xl border border-border/30 bg-background/20">
         <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-          <i className="fa-solid fa-diagram-project text-purple-400" />
+          <Workflow className="w-3.5 h-3.5 text-purple-400" />
           System Architecture
         </h3>
         <div className="flex flex-col items-center gap-2">
@@ -168,7 +181,7 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
             <div className="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-mono text-cyan-400">Next.js Frontend</div>
           </div>
           <div className="w-px h-4 bg-border/30" />
-          <i className="fa-solid fa-arrows-up-down text-[8px] text-muted-foreground/40" />
+          <ArrowUpDown className="w-3 h-3 text-muted-foreground/40" />
           <div className="w-px h-4 bg-border/30" />
           {/* API Layer */}
           <div className="flex items-center gap-2 flex-wrap justify-center">
@@ -176,7 +189,7 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
             <div className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[10px] font-mono text-purple-400">Auth Middleware</div>
           </div>
           <div className="w-px h-4 bg-border/30" />
-          <i className="fa-solid fa-arrows-up-down text-[8px] text-muted-foreground/40" />
+          <ArrowUpDown className="w-3 h-3 text-muted-foreground/40" />
           <div className="w-px h-4 bg-border/30" />
           {/* Data Layer */}
           <div className="flex items-center gap-2 flex-wrap justify-center">
@@ -185,7 +198,7 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
             <div className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] font-mono text-red-400">Redis Cache</div>
           </div>
           <div className="w-px h-4 bg-border/30" />
-          <i className="fa-solid fa-arrows-up-down text-[8px] text-muted-foreground/40" />
+          <ArrowUpDown className="w-3 h-3 text-muted-foreground/40" />
           <div className="w-px h-4 bg-border/30" />
           {/* Infrastructure */}
           <div className="flex items-center gap-2 flex-wrap justify-center">

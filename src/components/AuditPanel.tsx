@@ -1,10 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  Shield, Zap, Code2, Gem, Lock, Cpu, Box,
+  PieChart, Wrench, ChevronRight, ShieldCheck,
+} from 'lucide-react';
+import type { LucideProps } from 'lucide-react';
+import type { ComponentType } from 'react';
 
 export interface Finding {
   id: string;
   category: string;
+  /** @deprecated icon is resolved from categoryMeta by category name */
   categoryIcon: string;
   severity: 'critical' | 'high' | 'medium' | 'low' | 'pass';
   title: string;
@@ -20,14 +27,14 @@ interface AuditPanelProps {
   passedChecks: number;
 }
 
-const categoryMeta: Record<string, { icon: string; color: string; label: string }> = {
-  security: { icon: 'fa-shield-halved', color: 'text-red-400', label: 'Security' },
-  performance: { icon: 'fa-bolt', color: 'text-orange-400', label: 'Performance' },
-  typeSafety: { icon: 'fa-code', color: 'text-blue-400', label: 'Type Safety' },
-  codeQuality: { icon: 'fa-gem', color: 'text-purple-400', label: 'Code Quality' },
-  raceConditions: { icon: 'fa-lock', color: 'text-yellow-400', label: 'Race Conditions' },
-  memorySafety: { icon: 'fa-microchip', color: 'text-cyan-400', label: 'Memory Safety' },
-  dependencies: { icon: 'fa-cube', color: 'text-emerald-400', label: 'Dependencies' },
+const categoryMeta: Record<string, { icon: ComponentType<LucideProps>; color: string; label: string }> = {
+  security: { icon: Shield, color: 'text-red-400', label: 'Security' },
+  performance: { icon: Zap, color: 'text-orange-400', label: 'Performance' },
+  typeSafety: { icon: Code2, color: 'text-blue-400', label: 'Type Safety' },
+  codeQuality: { icon: Gem, color: 'text-purple-400', label: 'Code Quality' },
+  raceConditions: { icon: Lock, color: 'text-yellow-400', label: 'Race Conditions' },
+  memorySafety: { icon: Cpu, color: 'text-cyan-400', label: 'Memory Safety' },
+  dependencies: { icon: Box, color: 'text-emerald-400', label: 'Dependencies' },
 };
 
 const severityConfig: Record<string, { color: string; bg: string; border: string; label: string }> = {
@@ -58,7 +65,7 @@ export default function AuditPanel({ findings, auditScore, totalChecks, passedCh
     const catFindings = findings.filter(f => f.category === cat);
     const passed = catFindings.filter(f => f.severity === 'pass').length;
     const issues = catFindings.filter(f => f.severity !== 'pass').length;
-    const meta = categoryMeta[cat] || { icon: 'fa-circle', color: 'text-muted-foreground', label: cat };
+    const meta = categoryMeta[cat] || { icon: Box, color: 'text-muted-foreground', label: cat };
     return { cat, passed, issues, total: catFindings.length, ...meta };
   });
 
@@ -88,7 +95,7 @@ export default function AuditPanel({ findings, auditScore, totalChecks, passedCh
         </div>
         <div className="p-4 rounded-xl border border-border/30 bg-background/20 flex flex-col justify-center">
           <div className="text-sm font-semibold mb-2 flex items-center gap-2">
-            <i className="fa-solid fa-chart-pie text-primary" />
+            <PieChart className="w-3.5 h-3.5 text-primary" />
             Check Summary
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -104,7 +111,7 @@ export default function AuditPanel({ findings, auditScore, totalChecks, passedCh
         </div>
         <div className="p-4 rounded-xl border border-border/30 bg-background/20 flex flex-col justify-center">
           <div className="text-sm font-semibold mb-2 flex items-center gap-2">
-            <i className="fa-solid fa-wrench text-orange-400" />
+            <Wrench className="w-3.5 h-3.5 text-orange-400" />
             Issues
           </div>
           <div className="grid grid-cols-3 gap-1">
@@ -136,7 +143,7 @@ export default function AuditPanel({ findings, auditScore, totalChecks, passedCh
                 : 'border-border/30 bg-background/20 hover:border-border/50'
             }`}
           >
-            <i className={`fa-solid ${cs.icon} ${cs.color} text-sm mb-1`} />
+            <cs.icon className={`w-4 h-4 mx-auto ${cs.color} mb-1`} />
             <div className="text-[9px] text-muted-foreground font-medium">{cs.label}</div>
             <div className="text-[10px] font-mono mt-0.5">
               <span className="text-emerald-400">{cs.passed}</span>
@@ -180,7 +187,7 @@ export default function AuditPanel({ findings, auditScore, totalChecks, passedCh
               style={{ borderLeftColor: finding.severity === 'critical' ? '#f87171' : finding.severity === 'high' ? '#fb923c' : finding.severity === 'medium' ? '#fbbf24' : finding.severity === 'low' ? '#22d3ee' : '#34d399' }}
             >
               <div className="flex items-start gap-2">
-                <i className={`fa-solid ${cat.icon} ${cat.color} text-[10px] mt-0.5 flex-shrink-0`} />
+                <cat.icon className={`w-3 h-3 ${cat.color} mt-0.5 flex-shrink-0`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-medium text-foreground">{finding.title}</span>
@@ -201,7 +208,7 @@ export default function AuditPanel({ findings, auditScore, totalChecks, passedCh
         })}
         {filtered.length === 0 && (
           <div className="py-8 text-center text-xs text-muted-foreground/50">
-            <i className="fa-solid fa-shield-check text-lg mb-1 block" />
+            <ShieldCheck className="w-5 h-5 mx-auto mb-1" />
             No findings match your filter
           </div>
         )}
