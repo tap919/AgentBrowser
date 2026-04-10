@@ -1,7 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@fontsource-variable/dm-sans/index.css";
-@import "@fontsource-variable/jetbrains-mono/index.css";
 
 @custom-variant dark (&:is(.dark *));
 
