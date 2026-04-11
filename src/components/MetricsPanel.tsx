@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { Code2, FileCode2, FlaskConical, Shield, Zap, CheckCheck } from 'lucide-react';
 
 export interface Metrics {
@@ -18,7 +18,7 @@ interface MetricsPanelProps {
 function AnimatedCounter({ value, label, icon: Icon, color, suffix = '' }: {
   value: number;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   color: string;
   suffix?: string;
 }) {
