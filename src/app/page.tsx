@@ -14,9 +14,10 @@ import ActivityLog, { LogEntry } from '@/components/ActivityLog';
 import AuditPanel, { Finding } from '@/components/AuditPanel';
 import Deliverables from '@/components/Deliverables';
 import ThemeToggle from '@/components/ThemeToggle';
+import ToolEcosystem from '@/components/ToolEcosystem';
 
 /* ═══════════════════════════════════════════
-   PIPELINE PHASES DEFINITION (10 phases)
+   PIPELINE PHASES DEFINITION (12 phases)
    ═══════════════════════════════════════════ */
 const PHASES_DEF = [
   {
@@ -40,34 +41,44 @@ const PHASES_DEF = [
     subs: ['Initialize project repository', 'Set up framework and build tooling', 'Configure database and migrations', 'Set up authentication system', 'Connect deployment platform'],
   },
   {
-    id: 5, name: 'Build Core Features', icon: 'box', type: 'build' as const,
+    id: 5, name: 'Browser Automation Engine', icon: 'monitor', type: 'build' as const,
+    desc: 'Configures the selected browser automation engine (Playwright, Puppeteer, Selenium, or Skyvern AI) and sets up cross-browser capabilities.',
+    subs: ['Initialize automation engine', 'Configure browser contexts and profiles', 'Set up proxy rotation and anti-detection', 'Enable cross-browser support matrix', 'Configure screenshot and video recording'],
+  },
+  {
+    id: 6, name: 'Build Core Features', icon: 'box', type: 'build' as const,
     desc: 'The coder agent implements the main features — the parts your users will interact with most.',
     subs: ['Implement user authentication flow', 'Build main data models and API', 'Create primary user interface', 'Connect front-end to back-end', 'Add input validation and error handling'],
   },
   {
-    id: 6, name: 'Quality Gate: Core Audit', icon: 'shield', type: 'audit' as const,
+    id: 7, name: 'Quality Gate: Core Audit', icon: 'shield', type: 'audit' as const,
     desc: 'Automatic audit of all core features. Security, race conditions, and type safety are verified before proceeding.',
     subs: ['Security vulnerability scan', 'Race condition detection', 'Type safety analysis', 'Auto-fix any issues found', 'Re-audit to confirm fixes'],
   },
   {
-    id: 7, name: 'Build Remaining Features', icon: 'boxes', type: 'build' as const,
+    id: 8, name: 'AI-Powered Automation Layer', icon: 'sparkles', type: 'build' as const,
+    desc: 'Integrates AI-powered capabilities: Skyvern for vision-based automation, BrowserUse for natural language commands, and Firecrawl for structured data extraction.',
+    subs: ['Set up LLM-based element detection (Skyvern)', 'Configure natural language command processing (BrowserUse)', 'Enable structured data extraction pipeline (Firecrawl)', 'Add CAPTCHA solving and anti-bot evasion', 'Build adaptive selector recovery system'],
+  },
+  {
+    id: 9, name: 'Build Remaining Features', icon: 'boxes', type: 'build' as const,
     desc: 'With the core verified, the coder builds out secondary features, edge cases, and polish.',
     subs: ['Implement secondary features', 'Add error handling and edge cases', 'Build settings and preferences', 'Create notification system', 'Add loading states and transitions'],
   },
   {
-    id: 8, name: 'Performance Optimization', icon: 'gauge', type: 'build' as const,
+    id: 10, name: 'Performance Optimization', icon: 'gauge', type: 'build' as const,
     desc: 'Dedicated performance agent optimizes bundle size, rendering speed, and resource usage across the entire application.',
     subs: ['Analyze bundle size and tree-shake', 'Optimize rendering with memoization', 'Implement code splitting and lazy loading', 'Optimize database queries and indexing', 'Add caching at all layers'],
   },
   {
-    id: 9, name: 'Quality Gate: Full Audit', icon: 'shield', type: 'audit' as const,
+    id: 11, name: 'Quality Gate: Full Audit', icon: 'shield', type: 'audit' as const,
     desc: 'Complete 7-category audit of the entire project. Nothing ships with known critical issues.',
     subs: ['Static analysis and complexity scan', 'Security vulnerabilities deep scan', 'Code smells and duplication check', 'Race conditions and concurrency audit', 'Memory leak and resource cleanup check', 'Type safety and null check verification', 'Dependency health and CVE scan', 'Auto-fix everything possible', 'Final verification and sign-off'],
   },
   {
-    id: 10, name: 'Deploy and Deliver', icon: 'rocket', type: 'build' as const,
+    id: 12, name: 'Deploy and Deliver', icon: 'rocket', type: 'build' as const,
     desc: 'The finished project is deployed, tested live, and documented. You receive working URLs and access credentials.',
-    subs: ['Deploy to production environment', 'Run live health checks', 'Set up monitoring and alerts', 'Generate API documentation', 'Create handoff summary and guide'],
+    subs: ['Deploy to production environment', 'Run live health checks', 'Execute cross-browser smoke tests', 'Generate API documentation', 'Create handoff summary and guide'],
   },
 ];
 
@@ -242,7 +253,7 @@ function AppContent() {
 
   const generateAuditFindings = useCallback((phaseIdx: number, subStepIdx: number, subName: string) => {
     const phaseDef = PHASES_DEF[phaseIdx];
-    const isSecondAudit = phaseDef.id === 9;
+    const isSecondAudit = phaseDef.id === 11;
 
     if (subName.includes('Security')) {
       if (!isSecondAudit) {
@@ -551,8 +562,11 @@ function AppContent() {
       <main className="relative z-10 flex-1 overflow-y-auto">
         {/* FORM VIEW */}
         {state.view === 'form' && (
-          <div className="min-h-full flex items-center justify-center p-4 sm:p-8">
+          <div className="min-h-full flex flex-col items-center justify-start p-4 sm:p-8 gap-6 overflow-y-auto">
             <ProjectForm onSubmit={handleFormSubmit} isAnalyzing={false} />
+            <div className="w-full max-w-2xl">
+              <ToolEcosystem />
+            </div>
           </div>
         )}
 

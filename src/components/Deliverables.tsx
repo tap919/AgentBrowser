@@ -4,7 +4,7 @@ import {
   Globe, GitBranch, Database, FileText, TrendingUp, Shield,
   Boxes, BarChart2, ClipboardCheck, CheckCircle2, Circle,
   Workflow, PartyPopper, Wind, Atom, Server, Cloud, Zap, Code2,
-  ArrowUpDown,
+  ArrowUpDown, Monitor, Eye, Bot,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -32,6 +32,12 @@ const TECH_ICONS: Record<string, { icon: ComponentType<LucideProps>; color: stri
   'Vercel': { icon: Cloud, color: 'text-white' },
   'Supabase': { icon: Zap, color: 'text-emerald-300' },
   'Redis': { icon: Server, color: 'text-red-400' },
+  'Playwright': { icon: Monitor, color: 'text-green-400' },
+  'Puppeteer': { icon: Globe, color: 'text-cyan-400' },
+  'Selenium': { icon: Globe, color: 'text-blue-400' },
+  'Skyvern': { icon: Eye, color: 'text-purple-400' },
+  'BrowserUse': { icon: Bot, color: 'text-pink-400' },
+  'Firecrawl': { icon: Zap, color: 'text-orange-400' },
 };
 
 const DELIVERABLES: { icon: ComponentType<LucideProps>; color: string; bg: string; name: string; descType: string }[] = [
@@ -39,8 +45,11 @@ const DELIVERABLES: { icon: ComponentType<LucideProps>; color: string; bg: strin
   { icon: GitBranch, color: 'text-purple-400', bg: 'bg-purple-500/10', name: 'Source Code', descType: 'repo' },
   { icon: Database, color: 'text-cyan-400', bg: 'bg-cyan-500/10', name: 'Database', descType: 'db' },
   { icon: FileText, color: 'text-amber-400', bg: 'bg-amber-500/10', name: 'Documentation', descType: 'docs' },
-  { icon: TrendingUp, color: 'text-pink-400', bg: 'bg-pink-500/10', name: 'Analytics', descType: 'analytics' },
+  { icon: Monitor, color: 'text-green-400', bg: 'bg-green-500/10', name: 'Cross-Browser Report', descType: 'browser-report' },
   { icon: Shield, color: 'text-orange-400', bg: 'bg-orange-500/10', name: 'Security Report', descType: 'security' },
+  { icon: TrendingUp, color: 'text-pink-400', bg: 'bg-pink-500/10', name: 'Analytics', descType: 'analytics' },
+  { icon: Eye, color: 'text-violet-400', bg: 'bg-violet-500/10', name: 'Visual Test Results', descType: 'visual-tests' },
+  { icon: Bot, color: 'text-sky-400', bg: 'bg-sky-500/10', name: 'Automation Scripts', descType: 'automation' },
 ];
 
 const CHECKLIST_ITEMS = [
@@ -65,6 +74,9 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
       case 'docs': return 'README, API reference & deployment guide';
       case 'analytics': return `vercel.com/dashboard/analytics/${slug}`;
       case 'security': return 'Full audit report with all checks';
+      case 'browser-report': return 'Chromium, Firefox, WebKit compatibility matrix';
+      case 'visual-tests': return 'Screenshot diffs across browsers and viewports';
+      case 'automation': return 'Playwright/Puppeteer scripts and workflow configs';
       default: return '';
     }
   };
@@ -187,6 +199,15 @@ export default function Deliverables({ projectName, techStack, metrics }: Delive
           <div className="flex items-center gap-2 flex-wrap justify-center">
             <div className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[10px] font-mono text-purple-400">API Routes</div>
             <div className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[10px] font-mono text-purple-400">Auth Middleware</div>
+          </div>
+          <div className="w-px h-4 bg-border/30" />
+          <ArrowUpDown className="w-3 h-3 text-muted-foreground/40" />
+          <div className="w-px h-4 bg-border/30" />
+          {/* Automation Layer */}
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <div className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-[10px] font-mono text-green-400">Playwright</div>
+            <div className="px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono text-sky-400">Puppeteer</div>
+            <div className="px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20 text-[10px] font-mono text-violet-400">Skyvern AI</div>
           </div>
           <div className="w-px h-4 bg-border/30" />
           <ArrowUpDown className="w-3 h-3 text-muted-foreground/40" />

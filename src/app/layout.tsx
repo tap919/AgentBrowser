@@ -6,8 +6,8 @@ import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AgentBrowser — Autonomous Project Builder",
-  description: "AI-powered autonomous project builder with 10-phase pipeline, real-time auditing, and intelligent code generation.",
+  title: "AgentBrowser — Autonomous AI Browser & Project Builder",
+  description: "AI-powered autonomous project builder with 12-phase pipeline integrating Playwright, Puppeteer, Selenium, Skyvern AI, BrowserUse, Firecrawl, and more.",
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
