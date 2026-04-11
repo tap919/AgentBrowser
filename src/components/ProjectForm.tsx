@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AppIcon } from '@/lib/icons';
+import AutomationEngineSelector from './AutomationEngineSelector';
 
 export interface ProjectData {
   name: string;
@@ -10,6 +11,7 @@ export interface ProjectData {
   audience: string;
   services: string[];
   template: string;
+  automationEngine: string;
 }
 
 interface ProjectFormProps {
@@ -22,14 +24,20 @@ const TEMPLATES = [
   { id: 'saas', name: 'SaaS Starter', icon: 'cloud', desc: 'Multi-tenant app with billing' },
   { id: 'ecommerce', name: 'E-Commerce', icon: 'shopping-cart', desc: 'Online store with payments' },
   { id: 'dashboard', name: 'Dashboard', icon: 'trending-up', desc: 'Analytics & monitoring' },
-  { id: 'blog', name: 'Blog Platform', icon: 'pen-line', desc: 'Content management system' },
+  { id: 'web-scraper', name: 'Web Scraper', icon: 'scan', desc: 'Structured data extraction' },
+  { id: 'browser-testing', name: 'Browser Testing', icon: 'monitor', desc: 'Cross-browser test suite' },
+  { id: 'workflow-bot', name: 'Workflow Bot', icon: 'bot', desc: 'Automated browser workflows' },
+  { id: 'visual-testing', name: 'Visual Testing', icon: 'eye', desc: 'Screenshot & regression tests' },
   { id: 'api', name: 'API Backend', icon: 'server', desc: 'REST/GraphQL API service' },
 ];
 
 const PROJECT_TYPES = [
   'Web Application',
-  'Mobile App',
-  'Desktop App',
+  'Browser Automation',
+  'Web Scraping',
+  'Cross-Browser Testing',
+  'Visual Regression Testing',
+  'Workflow Automation',
   'API / Microservice',
   'CLI Tool',
   'Browser Extension',
@@ -47,6 +55,10 @@ const SERVICES = [
   'Analytics',
   'Notifications',
   'Caching',
+  'CAPTCHA Solving',
+  'Proxy Rotation',
+  'Screenshot Capture',
+  'PDF Generation',
 ];
 
 export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps) {
@@ -56,6 +68,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
   const [audience, setAudience] = useState('');
   const [services, setServices] = useState<string[]>(['Authentication', 'Database']);
   const [template, setTemplate] = useState('blank');
+  const [automationEngine, setAutomationEngine] = useState('playwright');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const toggleService = (service: string) => {
@@ -67,7 +80,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !description.trim()) return;
-    onSubmit({ name, description, type, audience, services, template });
+    onSubmit({ name, description, type, audience, services, template, automationEngine });
   };
 
   return (
@@ -88,7 +101,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
             <AppIcon name="layers" className="inline-block w-3.5 h-3.5 mr-1.5 text-primary" />
             Project Template
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {TEMPLATES.map((t) => (
               <button
                 key={t.id}
@@ -104,9 +117,22 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
                   } else if (t.id === 'dashboard') {
                     setServices(['Authentication', 'Database', 'Analytics', 'Real-time']);
                     setType('Web Application');
-                  } else if (t.id === 'blog') {
-                    setServices(['Database', 'File Storage', 'Search', 'Notifications']);
-                    setType('Web Application');
+                  } else if (t.id === 'web-scraper') {
+                    setServices(['Database', 'Proxy Rotation', 'Caching']);
+                    setType('Web Scraping');
+                    setAutomationEngine('puppeteer');
+                  } else if (t.id === 'browser-testing') {
+                    setServices(['Screenshot Capture', 'Analytics', 'Notifications']);
+                    setType('Cross-Browser Testing');
+                    setAutomationEngine('playwright');
+                  } else if (t.id === 'workflow-bot') {
+                    setServices(['Authentication', 'CAPTCHA Solving', 'Proxy Rotation', 'Notifications']);
+                    setType('Workflow Automation');
+                    setAutomationEngine('skyvern');
+                  } else if (t.id === 'visual-testing') {
+                    setServices(['Screenshot Capture', 'File Storage', 'Notifications']);
+                    setType('Visual Regression Testing');
+                    setAutomationEngine('playwright');
                   } else if (t.id === 'api') {
                     setServices(['Authentication', 'Database', 'Caching']);
                     setType('API / Microservice');
@@ -226,6 +252,12 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
               </div>
             )}
           </div>
+
+          {/* Automation Engine */}
+          <AutomationEngineSelector
+            selectedEngine={automationEngine}
+            onSelect={setAutomationEngine}
+          />
 
           {/* Submit */}
           <button
