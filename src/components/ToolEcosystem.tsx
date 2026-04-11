@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AppIcon } from '@/lib/icons';
+import { formatStars } from '@/lib/trending-repos';
 import { ChevronRight, ExternalLink, Star, TrendingUp } from 'lucide-react';
 
 export interface ToolInfo {
@@ -13,7 +14,7 @@ export interface ToolInfo {
   category: 'browser-automation' | 'ai-powered' | 'no-code' | 'ai-agents' | 'orchestration';
   integrated: boolean;
   trending?: boolean;
-  stars?: string;
+  stars?: number; // Numeric star count for calculations
   repo?: string;
 }
 
@@ -57,7 +58,7 @@ const TOOLS: ToolInfo[] = [
     category: 'browser-automation',
     integrated: false,
     trending: true,
-    stars: '28k',
+    stars: 28000,
     repo: 'lightpanda-io/browser',
   },
   {
@@ -69,7 +70,7 @@ const TOOLS: ToolInfo[] = [
     category: 'browser-automation',
     integrated: false,
     trending: true,
-    stars: '6.8k',
+    stars: 6800,
     repo: 'AskSteelAI/steel-browser',
   },
   {
@@ -94,7 +95,7 @@ const TOOLS: ToolInfo[] = [
     category: 'ai-powered',
     integrated: true,
     trending: true,
-    stars: '86k',
+    stars: 86000,
     repo: 'browser-use/browser-use',
   },
   {
@@ -106,7 +107,7 @@ const TOOLS: ToolInfo[] = [
     category: 'ai-powered',
     integrated: true,
     trending: true,
-    stars: '21k',
+    stars: 21000,
     repo: 'Skyvern-AI/skyvern',
   },
   {
@@ -118,7 +119,7 @@ const TOOLS: ToolInfo[] = [
     category: 'ai-powered',
     integrated: false,
     trending: true,
-    stars: '12k',
+    stars: 12000,
     repo: 'browserbase/stagehand',
   },
   {
@@ -130,7 +131,7 @@ const TOOLS: ToolInfo[] = [
     category: 'ai-powered',
     integrated: false,
     trending: true,
-    stars: '13k',
+    stars: 13000,
     repo: 'nicholasgriffintn/nanobrowser',
   },
   {
@@ -142,7 +143,7 @@ const TOOLS: ToolInfo[] = [
     category: 'ai-powered',
     integrated: false,
     trending: true,
-    stars: '15k',
+    stars: 15000,
     repo: 'getmaxun/maxun',
   },
   {
@@ -167,7 +168,7 @@ const TOOLS: ToolInfo[] = [
     category: 'ai-agents',
     integrated: false,
     trending: true,
-    stars: '45k',
+    stars: 45000,
     repo: 'All-Hands-AI/OpenHands',
   },
   {
@@ -179,7 +180,7 @@ const TOOLS: ToolInfo[] = [
     category: 'ai-agents',
     integrated: false,
     trending: true,
-    stars: '25k',
+    stars: 25000,
     repo: 'crewAIInc/crewAI',
   },
   {
@@ -191,7 +192,7 @@ const TOOLS: ToolInfo[] = [
     category: 'ai-agents',
     integrated: false,
     trending: true,
-    stars: '22k',
+    stars: 22000,
     repo: 'paul-gauthier/aider',
   },
   {
@@ -203,7 +204,7 @@ const TOOLS: ToolInfo[] = [
     category: 'ai-agents',
     integrated: false,
     trending: true,
-    stars: '18k',
+    stars: 18000,
     repo: 'princeton-nlp/SWE-agent',
   },
   {
@@ -215,7 +216,7 @@ const TOOLS: ToolInfo[] = [
     category: 'ai-agents',
     integrated: false,
     trending: true,
-    stars: '35k',
+    stars: 35000,
     repo: 'microsoft/autogen',
   },
 
@@ -231,7 +232,7 @@ const TOOLS: ToolInfo[] = [
     category: 'orchestration',
     integrated: true,
     trending: true,
-    stars: '95k',
+    stars: 95000,
     repo: 'langchain-ai/langchain',
   },
   {
@@ -243,7 +244,7 @@ const TOOLS: ToolInfo[] = [
     category: 'orchestration',
     integrated: false,
     trending: true,
-    stars: '8k',
+    stars: 8000,
     repo: 'langchain-ai/langgraph',
   },
   {
@@ -255,7 +256,7 @@ const TOOLS: ToolInfo[] = [
     category: 'orchestration',
     integrated: false,
     trending: true,
-    stars: '50k',
+    stars: 50000,
     repo: 'n8n-io/n8n',
   },
   {
@@ -267,7 +268,7 @@ const TOOLS: ToolInfo[] = [
     category: 'orchestration',
     integrated: false,
     trending: true,
-    stars: '35k',
+    stars: 35000,
     repo: 'langflow-ai/langflow',
   },
   {
@@ -279,7 +280,7 @@ const TOOLS: ToolInfo[] = [
     category: 'orchestration',
     integrated: false,
     trending: true,
-    stars: '15k',
+    stars: 15000,
     repo: 'daytonaio/daytona',
   },
 
@@ -391,10 +392,18 @@ export default function ToolEcosystem() {
         {filtered.map(tool => {
           const isExpanded = expandedTool === tool.name;
           return (
-            <button
+            <div
               key={tool.name}
+              role="button"
+              tabIndex={0}
               onClick={() => setExpandedTool(isExpanded ? null : tool.name)}
-              className={`text-left p-3 rounded-xl border transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] ${
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setExpandedTool(isExpanded ? null : tool.name);
+                }
+              }}
+              className={`text-left p-3 rounded-xl border transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] cursor-pointer ${
                 isExpanded
                   ? 'border-primary/40 bg-primary/5'
                   : tool.trending
@@ -416,7 +425,7 @@ export default function ToolEcosystem() {
                     {tool.stars && (
                       <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
                         <Star className="w-2 h-2" />
-                        {tool.stars}
+                        {formatStars(tool.stars)}
                       </span>
                     )}
                     {tool.trending && (
@@ -468,7 +477,7 @@ export default function ToolEcosystem() {
                   )}
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>

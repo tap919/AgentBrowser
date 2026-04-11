@@ -2,176 +2,8 @@
 
 import { useState } from 'react';
 import { AppIcon } from '@/lib/icons';
+import { TRENDING_REPOS, getTotalStars, formatStars, type TrendingRepoData } from '@/lib/trending-repos';
 import { Star, TrendingUp, ExternalLink, GitFork, ArrowUpRight } from 'lucide-react';
-
-interface TrendingRepo {
-  name: string;
-  repo: string;
-  stars: string;
-  description: string;
-  category: 'browser' | 'agent' | 'orchestration';
-  icon: string;
-  color: string;
-  highlights: string[];
-}
-
-const TRENDING_REPOS: TrendingRepo[] = [
-  // Browser Automation
-  {
-    name: 'browser-use',
-    repo: 'browser-use/browser-use',
-    stars: '86k',
-    description: 'The #1 AI browser automation — natural language control with LLM-driven browsing',
-    category: 'browser',
-    icon: 'brain',
-    color: 'text-pink-500',
-    highlights: ['Model-agnostic', 'Stealth mode', 'Multi-step tasks'],
-  },
-  {
-    name: 'Lightpanda',
-    repo: 'lightpanda-io/browser',
-    stars: '28k',
-    description: 'Blazing-fast headless browser built in Zig for AI-first automation',
-    category: 'browser',
-    icon: 'zap',
-    color: 'text-amber-400',
-    highlights: ['Ultra-fast', 'AI-optimized', 'Low-level APIs'],
-  },
-  {
-    name: 'Skyvern',
-    repo: 'Skyvern-AI/skyvern',
-    stars: '21k',
-    description: 'LLM + computer vision platform for complex automation workflows',
-    category: 'browser',
-    icon: 'eye',
-    color: 'text-purple-400',
-    highlights: ['No selectors', 'CAPTCHA solving', 'Self-adapting'],
-  },
-  {
-    name: 'Maxun',
-    repo: 'getmaxun/maxun',
-    stars: '15k',
-    description: 'No-code AI platform turning websites into structured APIs',
-    category: 'browser',
-    icon: 'layout',
-    color: 'text-rose-400',
-    highlights: ['Self-healing', 'No-code', 'API generation'],
-  },
-  {
-    name: 'Nanobrowser',
-    repo: 'nicholasgriffintn/nanobrowser',
-    stars: '13k',
-    description: 'Privacy-centric Chrome extension for multi-agent AI automation',
-    category: 'browser',
-    icon: 'chrome',
-    color: 'text-blue-400',
-    highlights: ['Privacy-first', 'Multi-agent', 'Own API keys'],
-  },
-  {
-    name: 'Stagehand',
-    repo: 'browserbase/stagehand',
-    stars: '12k',
-    description: 'Next-gen orchestration for AI-controlled browsers with visual programming',
-    category: 'browser',
-    icon: 'wand',
-    color: 'text-indigo-400',
-    highlights: ['Visual builder', 'Multi-agent', 'Enterprise'],
-  },
-
-  // AI Coding Agents
-  {
-    name: 'OpenHands',
-    repo: 'All-Hands-AI/OpenHands',
-    stars: '45k',
-    description: 'Multi-agent framework for autonomous software engineering',
-    category: 'agent',
-    icon: 'hand',
-    color: 'text-amber-400',
-    highlights: ['87% PR acceptance', 'Multi-agent', 'Full repo autonomy'],
-  },
-  {
-    name: 'AutoGen',
-    repo: 'microsoft/autogen',
-    stars: '35k',
-    description: 'Microsoft\'s framework for conversational multi-agent developer systems',
-    category: 'agent',
-    icon: 'bot',
-    color: 'text-purple-400',
-    highlights: ['Microsoft-backed', 'Multi-agent', 'Enterprise ready'],
-  },
-  {
-    name: 'CrewAI',
-    repo: 'crewAIInc/crewAI',
-    stars: '25k',
-    description: 'Team of AI agents workflow with planner, coder, reviewer roles',
-    category: 'agent',
-    icon: 'users',
-    color: 'text-cyan-400',
-    highlights: ['Role-based', 'Collaborative', 'Task delegation'],
-  },
-  {
-    name: 'Aider',
-    repo: 'paul-gauthier/aider',
-    stars: '22k',
-    description: 'CLI-based AI pair programmer that edits code in your local repo',
-    category: 'agent',
-    icon: 'terminal',
-    color: 'text-green-400',
-    highlights: ['Local-first', 'Git-aware', 'Privacy control'],
-  },
-  {
-    name: 'SWE-Agent',
-    repo: 'princeton-nlp/SWE-agent',
-    stars: '18k',
-    description: 'Autonomous agent for bug fixes, code reviews, and generation',
-    category: 'agent',
-    icon: 'bug',
-    color: 'text-red-400',
-    highlights: ['Bug fixing', 'Code review', 'Test generation'],
-  },
-
-  // Orchestration
-  {
-    name: 'LangChain',
-    repo: 'langchain-ai/langchain',
-    stars: '95k',
-    description: 'Swiss Army knife for chaining LLMs, APIs, and tools into agents',
-    category: 'orchestration',
-    icon: 'link',
-    color: 'text-emerald-400',
-    highlights: ['Composable', 'Tool integration', 'RAG support'],
-  },
-  {
-    name: 'n8n',
-    repo: 'n8n-io/n8n',
-    stars: '50k',
-    description: 'Visual no-code workflow automation with native LLM support',
-    category: 'orchestration',
-    icon: 'workflow',
-    color: 'text-orange-400',
-    highlights: ['Visual builder', '400+ integrations', 'Self-hosted'],
-  },
-  {
-    name: 'Langflow',
-    repo: 'langflow-ai/langflow',
-    stars: '35k',
-    description: 'Drag-and-drop visual designer for agentic RAG workflows',
-    category: 'orchestration',
-    icon: 'sparkles',
-    color: 'text-violet-400',
-    highlights: ['Visual RAG', 'Code-free', 'Python export'],
-  },
-  {
-    name: 'Daytona',
-    repo: 'daytonaio/daytona',
-    stars: '15k',
-    description: 'Secure infrastructure for executing AI-generated code',
-    category: 'orchestration',
-    icon: 'container',
-    color: 'text-blue-400',
-    highlights: ['Secure sandboxes', 'Git integration', 'Multi-cloud'],
-  },
-];
 
 const CATEGORIES = [
   { id: 'all' as const, label: 'All', icon: 'layers', color: 'text-primary' },
@@ -180,13 +12,13 @@ const CATEGORIES = [
   { id: 'orchestration' as const, label: 'Orchestration', icon: 'git-branch', color: 'text-teal-400' },
 ];
 
-type CategoryFilter = 'all' | TrendingRepo['category'];
+type CategoryFilter = 'all' | TrendingRepoData['category'];
 
 export default function TrendingReposPanel() {
   const [filter, setFilter] = useState<CategoryFilter>('all');
 
   const filtered = filter === 'all' ? TRENDING_REPOS : TRENDING_REPOS.filter(r => r.category === filter);
-  const totalStars = TRENDING_REPOS.reduce((sum, r) => sum + parseInt(r.stars.replace('k', '000')), 0);
+  const totalStars = getTotalStars(TRENDING_REPOS);
 
   return (
     <div className="w-full rounded-2xl border border-border/30 bg-background/20 overflow-hidden">
@@ -244,7 +76,7 @@ export default function TrendingReposPanel() {
                   <span className="text-xs font-semibold text-foreground">{repo.name}</span>
                   <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     <Star className="w-2 h-2" />
-                    {repo.stars}
+                    {formatStars(repo.stars)}
                   </span>
                   <ArrowUpRight className="w-3 h-3 text-muted-foreground/40 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
