@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AppIcon } from '@/lib/icons';
-import { ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 export interface ToolInfo {
   name: string;
