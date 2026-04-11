@@ -15,6 +15,7 @@ import AuditPanel, { Finding } from '@/components/AuditPanel';
 import Deliverables from '@/components/Deliverables';
 import ThemeToggle from '@/components/ThemeToggle';
 import ToolEcosystem from '@/components/ToolEcosystem';
+import TrendingReposPanel from '@/components/TrendingReposPanel';
 
 /* ═══════════════════════════════════════════
    PIPELINE PHASES DEFINITION (12 phases)
@@ -22,8 +23,8 @@ import ToolEcosystem from '@/components/ToolEcosystem';
 const PHASES_DEF = [
   {
     id: 1, name: 'AI Research & Planning', icon: 'brain', type: 'build' as const,
-    desc: 'The AI research agent analyzes your requirements, researches best practices, and creates a comprehensive implementation plan.',
-    subs: ['Analyze project requirements in depth', 'Research similar projects and patterns', 'Identify optimal architecture patterns', 'Create detailed implementation roadmap', 'Define acceptance criteria for each feature'],
+    desc: 'OpenHands multi-agent framework analyzes requirements, researches best practices using LangChain, and creates a comprehensive implementation plan.',
+    subs: ['OpenHands: Analyze project requirements in depth', 'LangChain: Research similar projects and patterns', 'CrewAI: Identify optimal architecture patterns', 'Create detailed implementation roadmap', 'Define acceptance criteria for each feature'],
   },
   {
     id: 2, name: 'Understand What You Need', icon: 'message-square', type: 'build' as const,
@@ -32,53 +33,53 @@ const PHASES_DEF = [
   },
   {
     id: 3, name: 'Design the System', icon: 'compass', type: 'build' as const,
-    desc: 'A senior architect agent designs the technical architecture, data models, API contracts, and component structure.',
+    desc: 'CrewAI planner and architect agents design the technical architecture, data models, API contracts, and component structure.',
     subs: ['Design database schema and models', 'Plan API endpoints and contracts', 'Define component hierarchy', 'Choose libraries and dependencies', 'Create file and folder structure'],
   },
   {
     id: 4, name: 'Set Up the Foundation', icon: 'layers', type: 'build' as const,
-    desc: 'The scaffolding agent creates the project, initializes the codebase, and configures all services and tooling.',
-    subs: ['Initialize project repository', 'Set up framework and build tooling', 'Configure database and migrations', 'Set up authentication system', 'Connect deployment platform'],
+    desc: 'Aider CLI agent creates the project, initializes the codebase, and configures all services inside Daytona secure workspaces.',
+    subs: ['Daytona: Initialize secure project workspace', 'Aider: Set up framework and build tooling', 'Configure database and migrations', 'Set up authentication system', 'Connect deployment platform'],
   },
   {
     id: 5, name: 'Browser Automation Engine', icon: 'monitor', type: 'build' as const,
-    desc: 'Configures the selected browser automation engine (Playwright, Puppeteer, Selenium, or Skyvern AI) and sets up cross-browser capabilities.',
-    subs: ['Initialize automation engine', 'Configure browser contexts and profiles', 'Set up proxy rotation and anti-detection', 'Enable cross-browser support matrix', 'Configure screenshot and video recording'],
+    desc: 'Configures trending browser engines: browser-use (86k★), Playwright, Stagehand, Skyvern AI, or Lightpanda for cross-browser capabilities.',
+    subs: ['browser-use: Initialize LLM-driven automation engine', 'Stagehand: Configure multi-agent orchestration', 'Set up proxy rotation and anti-detection', 'Lightpanda: Enable cross-browser support matrix', 'Configure screenshot and video recording'],
   },
   {
     id: 6, name: 'Build Core Features', icon: 'box', type: 'build' as const,
-    desc: 'The coder agent implements the main features — the parts your users will interact with most.',
-    subs: ['Implement user authentication flow', 'Build main data models and API', 'Create primary user interface', 'Connect front-end to back-end', 'Add input validation and error handling'],
+    desc: 'OpenHands and SWE-Agent implement the main features with 87% PR acceptance rate — the parts your users will interact with most.',
+    subs: ['OpenHands: Implement user authentication flow', 'SWE-Agent: Build main data models and API', 'Create primary user interface', 'Connect front-end to back-end', 'Add input validation and error handling'],
   },
   {
     id: 7, name: 'Quality Gate: Core Audit', icon: 'shield', type: 'audit' as const,
-    desc: 'Automatic audit of all core features. Security, race conditions, and type safety are verified before proceeding.',
-    subs: ['Security vulnerability scan', 'Race condition detection', 'Type safety analysis', 'Auto-fix any issues found', 'Re-audit to confirm fixes'],
+    desc: 'AutoGen code reviewer agent performs automatic audit. Security, race conditions, and type safety are verified before proceeding.',
+    subs: ['AutoGen: Security vulnerability scan', 'Race condition detection', 'Type safety analysis', 'Auto-fix any issues found', 'Re-audit to confirm fixes'],
   },
   {
     id: 8, name: 'AI-Powered Automation Layer', icon: 'sparkles', type: 'build' as const,
-    desc: 'Integrates AI-powered capabilities: Skyvern for vision-based automation, BrowserUse for natural language commands, and Firecrawl for structured data extraction.',
-    subs: ['Set up LLM-based element detection (Skyvern)', 'Configure natural language command processing (BrowserUse)', 'Enable structured data extraction pipeline (Firecrawl)', 'Add CAPTCHA solving and anti-bot evasion', 'Build adaptive selector recovery system'],
+    desc: 'Integrates trending AI tools: browser-use (86k★) for natural language commands, Skyvern (21k★) for vision-based automation, Maxun (15k★) for self-healing selectors, and Firecrawl for structured data extraction.',
+    subs: ['browser-use: Set up natural language command processing', 'Skyvern: Configure LLM-based vision detection', 'Maxun: Enable self-healing selector system', 'Nanobrowser: Add privacy-centric multi-agent automation', 'Firecrawl: Build structured data extraction pipeline'],
   },
   {
     id: 9, name: 'Build Remaining Features', icon: 'boxes', type: 'build' as const,
-    desc: 'With the core verified, the coder builds out secondary features, edge cases, and polish.',
+    desc: 'With the core verified, Aider and SWE-Agent build out secondary features, edge cases, and polish.',
     subs: ['Implement secondary features', 'Add error handling and edge cases', 'Build settings and preferences', 'Create notification system', 'Add loading states and transitions'],
   },
   {
     id: 10, name: 'Performance Optimization', icon: 'gauge', type: 'build' as const,
-    desc: 'Dedicated performance agent optimizes bundle size, rendering speed, and resource usage across the entire application.',
-    subs: ['Analyze bundle size and tree-shake', 'Optimize rendering with memoization', 'Implement code splitting and lazy loading', 'Optimize database queries and indexing', 'Add caching at all layers'],
+    desc: 'Dedicated performance agent optimizes bundle size, rendering speed, and resource usage. LangGraph orchestrates parallel optimization workflows.',
+    subs: ['LangGraph: Analyze bundle size and tree-shake', 'Optimize rendering with memoization', 'Implement code splitting and lazy loading', 'Optimize database queries and indexing', 'n8n: Add caching at all layers'],
   },
   {
     id: 11, name: 'Quality Gate: Full Audit', icon: 'shield', type: 'audit' as const,
-    desc: 'Complete 7-category audit of the entire project. Nothing ships with known critical issues.',
+    desc: 'Complete 7-category audit using AutoGen multi-agent system. Nothing ships with known critical issues.',
     subs: ['Static analysis and complexity scan', 'Security vulnerabilities deep scan', 'Code smells and duplication check', 'Race conditions and concurrency audit', 'Memory leak and resource cleanup check', 'Type safety and null check verification', 'Dependency health and CVE scan', 'Auto-fix everything possible', 'Final verification and sign-off'],
   },
   {
     id: 12, name: 'Deploy and Deliver', icon: 'rocket', type: 'build' as const,
-    desc: 'The finished project is deployed, tested live, and documented. You receive working URLs and access credentials.',
-    subs: ['Deploy to production environment', 'Run live health checks', 'Execute cross-browser smoke tests', 'Generate API documentation', 'Create handoff summary and guide'],
+    desc: 'The finished project is deployed via n8n workflows, tested live with browser-use, and documented. You receive working URLs and access credentials.',
+    subs: ['Daytona: Deploy to production environment', 'browser-use: Run live health checks', 'Stagehand: Execute cross-browser smoke tests', 'Langflow: Generate API documentation', 'Create handoff summary and guide'],
   },
 ];
 
@@ -564,8 +565,9 @@ function AppContent() {
         {state.view === 'form' && (
           <div className="min-h-full flex flex-col items-center justify-start p-4 sm:p-8 gap-6 overflow-y-auto">
             <ProjectForm onSubmit={handleFormSubmit} isAnalyzing={false} />
-            <div className="w-full max-w-2xl">
+            <div className="w-full max-w-2xl space-y-6">
               <ToolEcosystem />
+              <TrendingReposPanel />
             </div>
           </div>
         )}
