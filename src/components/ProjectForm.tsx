@@ -101,7 +101,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
             <AppIcon name="layers" className="inline-block w-3.5 h-3.5 mr-1.5 text-primary" />
             Project Template
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {TEMPLATES.map((t) => (
               <button
                 key={t.id}
