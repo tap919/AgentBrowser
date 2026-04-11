@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
+import {
+  Hexagon, Plus, Shield, Route, Brain,
+} from 'lucide-react';
 import ParticleBackground from '@/components/ParticleBackground';
 import ProjectForm, { ProjectData } from '@/components/ProjectForm';
 import AIAnalysisCard, { AIAnalysis } from '@/components/AIAnalysisCard';
@@ -10,59 +14,58 @@ import ActivityLog, { LogEntry } from '@/components/ActivityLog';
 import AuditPanel, { Finding } from '@/components/AuditPanel';
 import Deliverables from '@/components/Deliverables';
 import ThemeToggle from '@/components/ThemeToggle';
-import { ToastProvider, useToast } from '@/components/Toast';
 
 /* ═══════════════════════════════════════════
    PIPELINE PHASES DEFINITION (10 phases)
    ═══════════════════════════════════════════ */
 const PHASES_DEF = [
   {
-    id: 1, name: 'AI Research & Planning', icon: 'fa-brain', type: 'build' as const,
+    id: 1, name: 'AI Research & Planning', icon: 'brain', type: 'build' as const,
     desc: 'The AI research agent analyzes your requirements, researches best practices, and creates a comprehensive implementation plan.',
     subs: ['Analyze project requirements in depth', 'Research similar projects and patterns', 'Identify optimal architecture patterns', 'Create detailed implementation roadmap', 'Define acceptance criteria for each feature'],
   },
   {
-    id: 2, name: 'Understand What You Need', icon: 'fa-comments', type: 'build' as const,
+    id: 2, name: 'Understand What You Need', icon: 'message-square', type: 'build' as const,
     desc: 'The system reads your project description and fills any gaps with intelligent defaults based on your project type.',
     subs: ['Parse your project description', 'Identify missing requirements', 'Generate complete feature list', 'Confirm project scope and constraints'],
   },
   {
-    id: 3, name: 'Design the System', icon: 'fa-drafting-compass', type: 'build' as const,
+    id: 3, name: 'Design the System', icon: 'compass', type: 'build' as const,
     desc: 'A senior architect agent designs the technical architecture, data models, API contracts, and component structure.',
     subs: ['Design database schema and models', 'Plan API endpoints and contracts', 'Define component hierarchy', 'Choose libraries and dependencies', 'Create file and folder structure'],
   },
   {
-    id: 4, name: 'Set Up the Foundation', icon: 'fa-layer-group', type: 'build' as const,
+    id: 4, name: 'Set Up the Foundation', icon: 'layers', type: 'build' as const,
     desc: 'The scaffolding agent creates the project, initializes the codebase, and configures all services and tooling.',
     subs: ['Initialize project repository', 'Set up framework and build tooling', 'Configure database and migrations', 'Set up authentication system', 'Connect deployment platform'],
   },
   {
-    id: 5, name: 'Build Core Features', icon: 'fa-cube', type: 'build' as const,
+    id: 5, name: 'Build Core Features', icon: 'box', type: 'build' as const,
     desc: 'The coder agent implements the main features — the parts your users will interact with most.',
     subs: ['Implement user authentication flow', 'Build main data models and API', 'Create primary user interface', 'Connect front-end to back-end', 'Add input validation and error handling'],
   },
   {
-    id: 6, name: 'Quality Gate: Core Audit', icon: 'fa-shield-halved', type: 'audit' as const,
+    id: 6, name: 'Quality Gate: Core Audit', icon: 'shield', type: 'audit' as const,
     desc: 'Automatic audit of all core features. Security, race conditions, and type safety are verified before proceeding.',
     subs: ['Security vulnerability scan', 'Race condition detection', 'Type safety analysis', 'Auto-fix any issues found', 'Re-audit to confirm fixes'],
   },
   {
-    id: 7, name: 'Build Remaining Features', icon: 'fa-cubes', type: 'build' as const,
+    id: 7, name: 'Build Remaining Features', icon: 'boxes', type: 'build' as const,
     desc: 'With the core verified, the coder builds out secondary features, edge cases, and polish.',
     subs: ['Implement secondary features', 'Add error handling and edge cases', 'Build settings and preferences', 'Create notification system', 'Add loading states and transitions'],
   },
   {
-    id: 8, name: 'Performance Optimization', icon: 'fa-gauge-high', type: 'build' as const,
+    id: 8, name: 'Performance Optimization', icon: 'gauge', type: 'build' as const,
     desc: 'Dedicated performance agent optimizes bundle size, rendering speed, and resource usage across the entire application.',
     subs: ['Analyze bundle size and tree-shake', 'Optimize rendering with memoization', 'Implement code splitting and lazy loading', 'Optimize database queries and indexing', 'Add caching at all layers'],
   },
   {
-    id: 9, name: 'Quality Gate: Full Audit', icon: 'fa-shield-halved', type: 'audit' as const,
+    id: 9, name: 'Quality Gate: Full Audit', icon: 'shield', type: 'audit' as const,
     desc: 'Complete 7-category audit of the entire project. Nothing ships with known critical issues.',
     subs: ['Static analysis and complexity scan', 'Security vulnerabilities deep scan', 'Code smells and duplication check', 'Race conditions and concurrency audit', 'Memory leak and resource cleanup check', 'Type safety and null check verification', 'Dependency health and CVE scan', 'Auto-fix everything possible', 'Final verification and sign-off'],
   },
   {
-    id: 10, name: 'Deploy and Deliver', icon: 'fa-rocket', type: 'build' as const,
+    id: 10, name: 'Deploy and Deliver', icon: 'rocket', type: 'build' as const,
     desc: 'The finished project is deployed, tested live, and documented. You receive working URLs and access credentials.',
     subs: ['Deploy to production environment', 'Run live health checks', 'Set up monitoring and alerts', 'Generate API documentation', 'Create handoff summary and guide'],
   },
@@ -92,8 +95,6 @@ interface AppState {
    MAIN APP COMPONENT
    ═══════════════════════════════════════════ */
 function AppContent() {
-  const { addToast } = useToast();
-
   const [state, setState] = useState<AppState>({
     view: 'form',
     project: null,
@@ -187,7 +188,7 @@ function AppContent() {
   /* ─── Start Build ─── */
   const handleStartBuild = useCallback(() => {
     setState(prev => ({ ...prev, view: 'pipeline', pipelineRunning: true }));
-    addToast({ title: 'Build pipeline started', description: 'Autonomous build is now running', variant: 'default' });
+    toast('Build pipeline started', { description: 'Autonomous build is now running' });
 
     // Reset phases
     setState(prev => ({
@@ -211,7 +212,7 @@ function AppContent() {
 
     isRunningRef.current = true;
     runPipeline();
-  }, [addToast]);
+  }, []);
 
   /* ─── Pipeline Simulation Engine ─── */
   const wait = (ms: number) => new Promise<void>(resolve => {
@@ -245,38 +246,38 @@ function AppContent() {
 
     if (subName.includes('Security')) {
       if (!isSecondAudit) {
-        addFinding({ category: 'security', categoryIcon: 'fa-shield-halved', severity: 'high', title: 'Missing CSRF token on settings endpoint', location: 'api/routes.ts:156', fixed: false, phase: phaseDef.id });
-        addFinding({ category: 'security', categoryIcon: 'fa-shield-halved', severity: 'medium', title: 'Rate limiting not configured on login', location: 'api/auth.ts:42', fixed: false, phase: phaseDef.id });
+        addFinding({ category: 'security', severity: 'high', title: 'Missing CSRF token on settings endpoint', location: 'api/routes.ts:156', fixed: false, phase: phaseDef.id });
+        addFinding({ category: 'security', severity: 'medium', title: 'Rate limiting not configured on login', location: 'api/auth.ts:42', fixed: false, phase: phaseDef.id });
       } else {
-        addFinding({ category: 'security', categoryIcon: 'fa-shield-halved', severity: 'pass', title: 'All security checks passed', location: 'Full scan', fixed: true, phase: phaseDef.id });
+        addFinding({ category: 'security', severity: 'pass', title: 'All security checks passed', location: 'Full scan', fixed: true, phase: phaseDef.id });
       }
     } else if (subName.includes('Race')) {
       if (!isSecondAudit) {
-        addFinding({ category: 'raceConditions', categoryIcon: 'fa-lock', severity: 'high', title: 'Token refresh race condition detected', location: 'auth/token.ts:47', fixed: false, phase: phaseDef.id });
+        addFinding({ category: 'raceConditions', severity: 'high', title: 'Token refresh race condition detected', location: 'auth/token.ts:47', fixed: false, phase: phaseDef.id });
       } else {
-        addFinding({ category: 'raceConditions', categoryIcon: 'fa-lock', severity: 'pass', title: 'No race conditions detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
+        addFinding({ category: 'raceConditions', severity: 'pass', title: 'No race conditions detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
       }
     } else if (subName.includes('Type')) {
-      addFinding({ category: 'typeSafety', categoryIcon: 'fa-code', severity: 'medium', title: '2 unsafe type casts found and fixed', location: 'utils/transform.ts:5', fixed: false, phase: phaseDef.id });
-      addFinding({ category: 'typeSafety', categoryIcon: 'fa-code', severity: 'pass', title: 'All null checks verified', location: 'Full scan', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'typeSafety', severity: 'medium', title: '2 unsafe type casts found and fixed', location: 'utils/transform.ts:5', fixed: false, phase: phaseDef.id });
+      addFinding({ category: 'typeSafety', severity: 'pass', title: 'All null checks verified', location: 'Full scan', fixed: true, phase: phaseDef.id });
     } else if (subName.includes('Static') || subName.includes('complexity')) {
-      addFinding({ category: 'codeQuality', categoryIcon: 'fa-gem', severity: 'low', title: 'Complex function simplified (complexity 18 → 7)', location: 'auth/login.ts:47', fixed: false, phase: phaseDef.id });
-      addFinding({ category: 'codeQuality', categoryIcon: 'fa-gem', severity: 'pass', title: 'No dead code detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'codeQuality', severity: 'low', title: 'Complex function simplified (complexity 18 → 7)', location: 'auth/login.ts:47', fixed: false, phase: phaseDef.id });
+      addFinding({ category: 'codeQuality', severity: 'pass', title: 'No dead code detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
     } else if (subName.includes('Smell') || subName.includes('duplication')) {
-      addFinding({ category: 'codeQuality', categoryIcon: 'fa-gem', severity: 'low', title: 'Duplicated validation extracted to shared utility', location: 'auth/middleware.ts:23', fixed: false, phase: phaseDef.id });
-      addFinding({ category: 'codeQuality', categoryIcon: 'fa-gem', severity: 'pass', title: 'No god classes detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'codeQuality', severity: 'low', title: 'Duplicated validation extracted to shared utility', location: 'auth/middleware.ts:23', fixed: false, phase: phaseDef.id });
+      addFinding({ category: 'codeQuality', severity: 'pass', title: 'No god classes detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
     } else if (subName.includes('Memory') || subName.includes('resource')) {
-      addFinding({ category: 'memorySafety', categoryIcon: 'fa-microchip', severity: 'pass', title: 'No memory leaks detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'memorySafety', severity: 'pass', title: 'No memory leaks detected', location: 'Full scan', fixed: true, phase: phaseDef.id });
     } else if (subName.includes('Dependency') || subName.includes('CVE')) {
       if (!isSecondAudit) {
-        addFinding({ category: 'dependencies', categoryIcon: 'fa-cube', severity: 'high', title: '3 dependency CVEs found and patched', location: 'package.json', fixed: false, phase: phaseDef.id });
+        addFinding({ category: 'dependencies', severity: 'high', title: '3 dependency CVEs found and patched', location: 'package.json', fixed: false, phase: phaseDef.id });
       } else {
-        addFinding({ category: 'dependencies', categoryIcon: 'fa-cube', severity: 'pass', title: 'All dependencies up to date', location: 'Full scan', fixed: true, phase: phaseDef.id });
+        addFinding({ category: 'dependencies', severity: 'pass', title: 'All dependencies up to date', location: 'Full scan', fixed: true, phase: phaseDef.id });
       }
     } else if (subName.includes('Auto-fix') || subName.includes('fix')) {
-      addFinding({ category: 'codeQuality', categoryIcon: 'fa-gem', severity: 'pass', title: 'All fixable issues resolved automatically', location: 'Auto-fix engine', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'codeQuality', severity: 'pass', title: 'All fixable issues resolved automatically', location: 'Auto-fix engine', fixed: true, phase: phaseDef.id });
     } else if (subName.includes('verification') || subName.includes('Re-audit') || subName.includes('Final') || subName.includes('sign-off')) {
-      addFinding({ category: 'security', categoryIcon: 'fa-shield-halved', severity: 'pass', title: 'Verification scan: all clear', location: 'Full scan', fixed: true, phase: phaseDef.id });
+      addFinding({ category: 'security', severity: 'pass', title: 'Verification scan: all clear', location: 'Full scan', fixed: true, phase: phaseDef.id });
     }
   }, [addFinding]);
 
@@ -293,7 +294,7 @@ function AppContent() {
         return { ...prev, phases, currentPhase: pi, currentSubStep: 0 };
       });
 
-      addLog(`Starting: ${phaseDef.name}`, 'fa-play', 'text-purple-400', 'build');
+      addLog(`Starting: ${phaseDef.name}`, 'play', 'text-purple-400', 'build');
 
       // Simulate sub-steps
       for (let si = 0; si < phaseDef.subs.length; si++) {
@@ -327,12 +328,12 @@ function AppContent() {
               }
             }
             if (autoFixed > 0) {
-              addLog(`Auto-fixed ${autoFixed} issue${autoFixed > 1 ? 's' : ''}`, 'fa-wrench', 'text-orange-400', 'fix');
+              addLog(`Auto-fixed ${autoFixed} issue${autoFixed > 1 ? 's' : ''}`, 'wrench', 'text-orange-400', 'fix');
             }
             return { ...prev, findings: newFindings };
           });
         } else {
-          addLog(subName, 'fa-check', 'text-emerald-400', 'build');
+          addLog(subName, 'check', 'text-emerald-400', 'build');
         }
 
         // Update metrics
@@ -362,7 +363,7 @@ function AppContent() {
         setState(prev => {
           const criticals = prev.findings.filter(f => f.phase === phaseDef.id && f.severity === 'critical');
           if (criticals.length > 0) {
-            addLog(`Audit gate: ${criticals.length} critical issue(s) — auto-fixing`, 'fa-shield-halved', 'text-red-400', 'audit');
+            addLog(`Audit gate: ${criticals.length} critical issue(s) — auto-fixing`, 'shield', 'text-red-400', 'audit');
             const newFindings = [...prev.findings];
             for (const f of newFindings) {
               if (f.phase === phaseDef.id && f.severity === 'critical') {
@@ -370,15 +371,15 @@ function AppContent() {
                 f.severity = 'pass';
               }
             }
-            addLog('All critical issues resolved', 'fa-check-circle', 'text-emerald-400', 'fix');
+            addLog('All critical issues resolved', 'check-circle', 'text-emerald-400', 'fix');
             return { ...prev, findings: newFindings };
           } else {
-            addLog(`Audit gate passed — no critical issues`, 'fa-shield-halved', 'text-emerald-400', 'audit');
+            addLog(`Audit gate passed — no critical issues`, 'shield', 'text-emerald-400', 'audit');
             return prev;
           }
         });
       } else {
-        addLog(`Completed: ${phaseDef.name}`, 'fa-check-double', 'text-emerald-400', 'build');
+        addLog(`Completed: ${phaseDef.name}`, 'check-check', 'text-emerald-400', 'build');
       }
 
       // Mark phase as completed
@@ -398,8 +399,8 @@ function AppContent() {
       confidence: 100,
       metrics: { ...prev.metrics, securityScore: 97 },
     }));
-    addLog('Project complete and delivered!', 'fa-party-horn', 'text-purple-400', 'deploy');
-    addToast({ title: 'Project Delivered!', description: 'Your project is built, audited, and live.', variant: 'success' });
+    addLog('Project complete and delivered!', 'party-popper', 'text-purple-400', 'deploy');
+    toast.success('Project Delivered!', { description: 'Your project is built, audited, and live.' });
 
     // Switch to complete view after a delay
     await wait(2000);
@@ -438,15 +439,14 @@ function AppContent() {
   /* ─── Manual Audit ─── */
   const handleRunAudit = useCallback(() => {
     if (state.pipelineRunning) return;
-    addToast({ title: 'Manual audit triggered', description: 'Running full audit across all code', variant: 'warning' });
-    addLog('Manual audit triggered by user', 'fa-shield-halved', 'text-amber-400', 'audit');
+    toast.warning('Manual audit triggered', { description: 'Running full audit across all code' });
+    addLog('Manual audit triggered by user', 'shield', 'text-amber-400', 'audit');
 
     // Simulate audit findings
     const categories = ['security', 'performance', 'typeSafety', 'codeQuality', 'raceConditions', 'memorySafety', 'dependencies'] as const;
     for (const cat of categories) {
       addFinding({
         category: cat,
-        categoryIcon: categoryMeta[cat]?.icon || 'fa-circle',
         severity: 'pass',
         title: `${cat} check passed`,
         location: 'Full scan',
@@ -459,7 +459,7 @@ function AppContent() {
       ...prev,
       metrics: { ...prev.metrics, securityScore: Math.min(100, prev.metrics.securityScore + 5) },
     }));
-  }, [state.pipelineRunning, addToast, addLog, addFinding]);
+  }, [state.pipelineRunning, addLog, addFinding]);
 
   /* ─── Computed values ─── */
   const auditScore = state.findings.length > 0
@@ -479,7 +479,7 @@ function AppContent() {
       {/* ─── Top Bar ─── */}
       <header className="relative z-40 flex items-center gap-3 px-4 sm:px-6 h-14 border-b border-border/30 glass-strong flex-shrink-0">
         <div className="flex items-center gap-2">
-          <i className="fa-solid fa-hexagon-check text-primary text-lg" />
+          <Hexagon className="w-5 h-5 text-primary" />
           <span className="text-sm font-bold tracking-tight">
             Agent<span className="text-primary">Browser</span>
           </span>
@@ -492,7 +492,7 @@ function AppContent() {
           onClick={handleNewProject}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/30 bg-background/30 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all duration-200"
         >
-          <i className="fa-solid fa-plus text-[9px]" />
+          <Plus className="w-2.5 h-2.5" />
           <span className="hidden sm:inline truncate max-w-[160px]">
             {state.project?.name || 'New Project'}
           </span>
@@ -528,7 +528,7 @@ function AppContent() {
             disabled={state.pipelineRunning}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-500/20 bg-amber-500/5 text-xs text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <i className="fa-solid fa-shield-halved text-[10px]" />
+            <Shield className="w-2.5 h-2.5" />
             <span className="hidden sm:inline">Run Audit</span>
           </button>
         )}
@@ -542,7 +542,7 @@ function AppContent() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all duration-200 hover:scale-105 active:scale-95"
           style={{ background: 'linear-gradient(135deg, oklch(0.55 0.22 280), oklch(0.5 0.18 260))' }}
         >
-          <i className="fa-solid fa-plus text-[9px]" />
+          <Plus className="w-2.5 h-2.5" />
           <span className="hidden sm:inline">New</span>
         </button>
       </header>
@@ -562,7 +562,7 @@ function AppContent() {
             <div className="text-center animate-fade-in-up">
               <div className="relative inline-block mb-6">
                 <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, oklch(0.55 0.22 280), oklch(0.6 0.2 190))' }}>
-                  <i className="fa-solid fa-brain text-white text-2xl animate-pulse" />
+                  <Brain className="w-6 h-6 text-white animate-pulse" />
                 </div>
                 <div className="absolute -inset-2 rounded-3xl border-2 border-primary/20 animate-ping opacity-30" />
               </div>
@@ -614,7 +614,7 @@ function AppContent() {
               <div className="lg:col-span-2 space-y-2">
                 <div className="flex items-center justify-between mb-1">
                   <h2 className="text-sm font-semibold flex items-center gap-2">
-                    <i className="fa-solid fa-route text-primary" />
+                    <Route className="w-3.5 h-3.5 text-primary" />
                     Build Pipeline
                   </h2>
                   <span className="text-[10px] font-mono text-muted-foreground">
@@ -638,7 +638,7 @@ function AppContent() {
               <div className="space-y-4">
                 <div>
                   <h2 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                    <i className="fa-solid fa-shield-halved text-amber-400" />
+                    <Shield className="w-3.5 h-3.5 text-amber-400" />
                     Audit Status
                   </h2>
                   <AuditPanel
@@ -677,7 +677,7 @@ function AppContent() {
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all duration-300 hover:scale-105 active:scale-95"
                 style={{ background: 'linear-gradient(135deg, oklch(0.55 0.22 280), oklch(0.6 0.2 190), oklch(0.55 0.18 160))' }}
               >
-                <i className="fa-solid fa-plus" />
+                <Plus className="w-4 h-4" />
                 Start New Project
               </button>
             </div>
@@ -688,23 +688,9 @@ function AppContent() {
   );
 }
 
-const categoryMeta: Record<string, { icon: string }> = {
-  security: { icon: 'fa-shield-halved' },
-  performance: { icon: 'fa-bolt' },
-  typeSafety: { icon: 'fa-code' },
-  codeQuality: { icon: 'fa-gem' },
-  raceConditions: { icon: 'fa-lock' },
-  memorySafety: { icon: 'fa-microchip' },
-  dependencies: { icon: 'fa-cube' },
-};
-
 /* ═══════════════════════════════════════════
    ROOT EXPORT WITH PROVIDERS
    ═══════════════════════════════════════════ */
 export default function Home() {
-  return (
-    <ToastProvider>
-      <AppContent />
-    </ToastProvider>
-  );
+  return <AppContent />;
 }

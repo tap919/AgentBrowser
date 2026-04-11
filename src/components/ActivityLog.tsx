@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { AppIcon } from '@/lib/icons';
+import { Search, Inbox, ChevronRight } from 'lucide-react';
 
 export interface LogEntry {
   id: string;
   time: string;
   text: string;
+  /** Icon name key for AppIcon (e.g. 'check', 'wrench', 'shield') */
   icon: string;
   color: string;
   category: 'build' | 'audit' | 'fix' | 'deploy' | 'info';
@@ -58,7 +61,7 @@ export default function ActivityLog({ entries }: ActivityLogProps) {
       {/* Header */}
       <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <i className="fa-solid fa-list-timeline text-primary text-sm" />
+          <AppIcon name="list" className="w-4 h-4 text-primary" />
           <span className="text-sm font-semibold">Activity Log</span>
           <span className="text-[10px] text-muted-foreground font-mono">({entries.length})</span>
         </div>
@@ -85,7 +88,7 @@ export default function ActivityLog({ entries }: ActivityLogProps) {
         </div>
         <div className="flex-1 min-w-[120px] max-w-[200px] ml-auto">
           <div className="relative">
-            <i className="fa-solid fa-search absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground/50" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-muted-foreground/50" />
             <input
               type="text"
               value={search}
@@ -101,7 +104,7 @@ export default function ActivityLog({ entries }: ActivityLogProps) {
       <div ref={scrollRef} className="max-h-[280px] overflow-y-auto px-3 py-2 space-y-0.5">
         {filtered.length === 0 ? (
           <div className="py-6 text-center text-xs text-muted-foreground/50">
-            <i className="fa-solid fa-inbox text-lg mb-1 block" />
+            <Inbox className="w-5 h-5 mx-auto mb-1" />
             No matching log entries
           </div>
         ) : (
@@ -117,14 +120,14 @@ export default function ActivityLog({ entries }: ActivityLogProps) {
                   <span className="text-[9px] font-mono text-muted-foreground/50 min-w-[38px] pt-0.5 flex-shrink-0">
                     {entry.time}
                   </span>
-                  <span className={`w-4 h-4 rounded flex items-center justify-center text-[7px] flex-shrink-0 ${cat.bg} ${cat.color}`}>
-                    <i className={entry.icon} />
+                  <span className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${cat.bg} ${cat.color}`}>
+                    <AppIcon name={entry.icon} className="w-2.5 h-2.5" />
                   </span>
                   <span className="text-[11px] text-foreground/80 leading-tight text-left flex-1 min-w-0">
                     {entry.text}
                   </span>
                   {entry.detail && (
-                    <i className={`fa-solid fa-chevron-right text-[7px] text-muted-foreground/40 transition-transform duration-200 flex-shrink-0 mt-1 ${isExpanded ? 'rotate-90' : ''}`} />
+                    <ChevronRight className={`w-2.5 h-2.5 text-muted-foreground/40 transition-transform duration-200 flex-shrink-0 mt-0.5 ${isExpanded ? 'rotate-90' : ''}`} />
                   )}
                 </button>
                 {isExpanded && entry.detail && (
