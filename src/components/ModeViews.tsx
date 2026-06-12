@@ -13,6 +13,8 @@ import {
   AlertTriangle, Loader2, Bug,
 } from 'lucide-react';
 
+import BigHomiePanel from './BigHomiePanel';
+
 /* ═══════════════════════════════════════════
    BROWSER TAB TYPES
    ═══════════════════════════════════════════ */
@@ -114,8 +116,6 @@ export function BrowseView() {
   ]);
   const [urlInput, setUrlInput] = useState('');
   const [panel, setPanel] = useState<BrowserPanel>('none');
-  const [showAISidebar, setShowAISidebar] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
   const [globalHistory, setGlobalHistory] = useState<HistoryEntry[]>([]);
   const urlInputRef = useRef<HTMLInputElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -385,13 +385,6 @@ export function BrowseView() {
         <button className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/10 transition-all" title="Share">
           <Share2 className="w-3.5 h-3.5" />
         </button>
-        <button
-          onClick={() => setShowAISidebar(v => !v)}
-          className={`p-1.5 rounded-lg transition-all ${showAISidebar ? 'bg-purple-500/10 text-purple-400' : 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/10'}`}
-          title="AI Assistant"
-        >
-          <Wand2 className="w-3.5 h-3.5" />
-        </button>
         <button className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/10 transition-all" title="More">
           <MoreHorizontal className="w-3.5 h-3.5" />
         </button>
@@ -563,73 +556,102 @@ export function BrowseView() {
           </div>
         )}
 
-        {/* AI Sidebar */}
-        {showAISidebar && (
-          <div className="w-72 flex-shrink-0 border-l border-border/20 bg-background/30 flex flex-col">
-            <div className="p-3 border-b border-border/20 flex items-center justify-between">
-              <h3 className="text-xs font-semibold flex items-center gap-1.5">
-                <Wand2 className="w-3 h-3 text-purple-400" /> AI Assistant
-              </h3>
-              <button onClick={() => setShowAISidebar(false)} className="p-1 rounded hover:bg-muted/10">
-                <X className="w-3 h-3 text-muted-foreground/50" />
-              </button>
-            </div>
-            <div className="flex-1 p-4 flex items-center justify-center">
-              <div className="text-center space-y-2">
-                <Sparkles className="w-8 h-8 text-purple-400/40 mx-auto" />
-                <p className="text-xs text-muted-foreground/60">Ask AI to summarize pages, fill forms, extract data, or navigate for you.</p>
-              </div>
-            </div>
-            <div className="p-3 border-t border-border/20">
-              <div className="flex items-center gap-2">
-                <input
-                  value={aiPrompt}
-                  onChange={e => setAiPrompt(e.target.value)}
-                  type="text"
-                  placeholder="Ask AI anything..."
-                  className="flex-1 px-3 py-2 rounded-lg border border-border/30 bg-background/20 text-xs outline-none focus:border-purple-500/30 transition-all placeholder:text-muted-foreground/40"
-                />
-                <button className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 transition-all">
-                  <ArrowRight className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Big Homie Panel */}
+        <BigHomiePanel />
       </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════
-   RESEARCH VIEW
+   RESEARCH VIEW — powered by Crawl4AI
    ═══════════════════════════════════════════ */
+
+interface CrawlResult {
+  status: string;
+  url: string;
+  markdown: string;
+  summary?: string;
+  links_count?: number;
+  note?: string;
+}
+
 export function ResearchView() {
   const [query, setQuery] = useState('');
+  const [url, setUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<CrawlResult | null>(null);
+  const [error, setError] = useState('');
+  const [activeSource, setActiveSource] = useState<'web' | 'papers' | 'code' | 'docs'>('web');
+  const [viewMode, setViewMode] = useState<'summary' | 'markdown'>('summary');
+
+  const BIG_HOMIE = process.env.NEXT_PUBLIC_BIG_HOMIE_URL || 'http://localhost:8888';
+
+  const handleResearch = async () => {
+    const target = url.trim() || (query.trim() ? `https://duckduckgo.com/?q=${encodeURIComponent(query)}` : '');
+    if (!target) return;
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      const res = await fetch(`${BIG_HOMIE}/crawl`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: target, query: query.trim(), output_format: 'markdown' }),
+      });
+      const data: CrawlResult = await res.json();
+      setResult(data);
+      if (data.status === 'error') setError(data.markdown || 'Crawl failed');
+    } catch (e) {
+      setError(`Failed to reach Big Homie at ${BIG_HOMIE}. Is it running?`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const sources = [
-    { id: 'web', icon: Globe, label: 'Web', active: true },
-    { id: 'papers', icon: BookOpen, label: 'Papers', active: true },
-    { id: 'code', icon: Code2, label: 'Code', active: false },
-    { id: 'docs', icon: FileText, label: 'Docs', active: false },
+    { id: 'web' as const, icon: Globe, label: 'Web' },
+    { id: 'papers' as const, icon: BookOpen, label: 'Papers' },
+    { id: 'code' as const, icon: Code2, label: 'Code' },
+    { id: 'docs' as const, icon: FileText, label: 'Docs' },
   ];
 
   return (
     <div className="h-full flex flex-col">
-      {/* Search bar + source toggles */}
+      {/* Search bar */}
       <div className="flex-shrink-0 p-4 border-b border-border/30 space-y-3">
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
-          <div className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/40 bg-background/40 focus-within:border-cyan-500/40 focus-within:ring-1 focus-within:ring-cyan-500/20 transition-all">
+          <div className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/40 bg-background/40 focus-within:border-cyan-500/40 transition-all">
+            <Link2 className="w-4 h-4 text-cyan-400/60 flex-shrink-0" />
+            <input
+              type="text"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleResearch()}
+              placeholder="Paste a URL to crawl (or leave blank to search)..."
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 max-w-3xl mx-auto">
+          <div className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/40 bg-background/40 focus-within:border-cyan-500/40 transition-all">
             <Search className="w-4 h-4 text-cyan-400 flex-shrink-0" />
             <input
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Research any topic with multi-source AI..."
+              onKeyDown={e => e.key === 'Enter' && handleResearch()}
+              placeholder="Ask a question — Big Homie will summarise the page..."
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
             />
           </div>
-          <button className="px-4 py-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/20 transition-all flex items-center gap-1.5">
-            <Search className="w-3.5 h-3.5" /> Research
+          <button
+            onClick={handleResearch}
+            disabled={loading || (!url.trim() && !query.trim())}
+            className="px-4 py-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold hover:bg-cyan-500/20 transition-all flex items-center gap-1.5 disabled:opacity-40"
+          >
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+            {loading ? 'Crawling...' : 'Research'}
           </button>
         </div>
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
@@ -637,8 +659,9 @@ export function ResearchView() {
           {sources.map(s => (
             <button
               key={s.id}
+              onClick={() => setActiveSource(s.id)}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all ${
-                s.active
+                activeSource === s.id
                   ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-400'
                   : 'border border-border/30 text-muted-foreground/60 hover:text-muted-foreground'
               }`}
@@ -649,88 +672,232 @@ export function ResearchView() {
         </div>
       </div>
 
-      {/* Results area */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-            <Search className="w-7 h-7 text-cyan-400" />
+      {/* Results */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {error && (
+          <div className="max-w-3xl mx-auto p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-sm">
+            <AlertTriangle className="inline w-4 h-4 mr-2" />{error}
           </div>
-          <h2 className="text-lg font-bold text-foreground">Deep Research Mode</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Query multiple sources simultaneously — web, academic papers, code repositories, and documentation.
-            AI synthesizes findings into structured reports.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-            {['Multi-source search', 'AI synthesis', 'Citation tracking', 'Export reports', 'Knowledge graph'].map(feat => (
-              <span key={feat} className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">{feat}</span>
-            ))}
+        )}
+
+        {result && result.status !== 'error' && (
+          <div className="max-w-3xl mx-auto space-y-4">
+            {/* Meta bar */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+                <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 text-cyan-400" />
+                <span className="truncate">{result.url}</span>
+                {result.links_count != null && (
+                  <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">{result.links_count} links</span>
+                )}
+                {result.note && (
+                  <span className="flex-shrink-0 text-amber-400 text-[10px]">⚠ {result.note}</span>
+                )}
+              </div>
+              <div className="flex-shrink-0 flex items-center gap-1">
+                <button onClick={() => setViewMode('summary')} className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${viewMode === 'summary' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'text-muted-foreground'}`}>
+                  <Wand2 className="inline w-3 h-3 mr-1" />Summary
+                </button>
+                <button onClick={() => setViewMode('markdown')} className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${viewMode === 'markdown' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'text-muted-foreground'}`}>
+                  <FileText className="inline w-3 h-3 mr-1" />Raw
+                </button>
+                <button
+                  onClick={() => navigator.clipboard.writeText(viewMode === 'summary' ? (result.summary ?? result.markdown) : result.markdown)}
+                  className="p-1 rounded hover:bg-muted/10 text-muted-foreground/50 hover:text-foreground transition-all"
+                  title="Copy to clipboard"
+                >
+                  <FileDown className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* AI Summary */}
+            {viewMode === 'summary' && result.summary && (
+              <div className="p-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs text-cyan-400 font-semibold">
+                  <Sparkles className="w-3.5 h-3.5" /> Big Homie Summary
+                </div>
+                <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{result.summary}</p>
+              </div>
+            )}
+
+            {/* Content */}
+            <div className="p-4 rounded-xl border border-border/30 bg-background/30">
+              <pre className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed font-sans overflow-auto max-h-[60vh]">
+                {viewMode === 'summary' ? (result.summary ?? result.markdown) : result.markdown}
+              </pre>
+            </div>
           </div>
-        </div>
+        )}
+
+        {!result && !error && !loading && (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center space-y-4 max-w-md">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                <Search className="w-7 h-7 text-cyan-400" />
+              </div>
+              <h2 className="text-lg font-bold text-foreground">Deep Research Mode</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Paste any URL or type a question. Big Homie will crawl the page with Crawl4AI and synthesise the results.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                {['Crawl4AI powered', 'AI synthesis', 'Markdown output', 'Link analysis', 'Copy results'].map(feat => (
+                  <span key={feat} className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">{feat}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════
-   SCRAPE VIEW
+   SCRAPE VIEW — powered by Crawl4AI
    ═══════════════════════════════════════════ */
+type OutputFormat = 'markdown' | 'json' | 'text';
+
 export function ScrapeView() {
   const [targetUrl, setTargetUrl] = useState('');
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>('markdown');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<CrawlResult | null>(null);
+  const [error, setError] = useState('');
+
+  const BIG_HOMIE = process.env.NEXT_PUBLIC_BIG_HOMIE_URL || 'http://localhost:8888';
+
+  const handleExtract = async () => {
+    if (!targetUrl.trim()) return;
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      const res = await fetch(`${BIG_HOMIE}/crawl`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: targetUrl.trim(), output_format: outputFormat }),
+      });
+      const data: CrawlResult = await res.json();
+      setResult(data);
+      if (data.status === 'error') setError(data.markdown || 'Extraction failed');
+    } catch {
+      setError(`Failed to reach Big Homie at ${BIG_HOMIE}. Is it running?`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!result) return;
+    const ext = outputFormat === 'json' ? 'json' : outputFormat === 'markdown' ? 'md' : 'txt';
+    const blob = new Blob([result.markdown], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `scrape-${Date.now()}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const OUTPUT_FORMATS: { icon: typeof Table; label: string; id: OutputFormat }[] = [
+    { icon: FileText, label: 'Markdown', id: 'markdown' },
+    { icon: Braces, label: 'JSON', id: 'json' },
+    { icon: Table, label: 'Text', id: 'text' },
+  ];
 
   return (
     <div className="h-full flex flex-col">
-      {/* Target config */}
+      {/* Config bar */}
       <div className="flex-shrink-0 p-4 border-b border-border/30 space-y-3">
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
-          <div className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/40 bg-background/40 focus-within:border-orange-500/40 focus-within:ring-1 focus-within:ring-orange-500/20 transition-all">
+          <div className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/40 bg-background/40 focus-within:border-orange-500/40 transition-all">
             <Link2 className="w-4 h-4 text-orange-400 flex-shrink-0" />
             <input
               type="url"
               value={targetUrl}
               onChange={e => setTargetUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleExtract()}
               placeholder="Enter target URL for data extraction..."
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
             />
           </div>
-          <button className="px-4 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold hover:bg-orange-500/20 transition-all flex items-center gap-1.5">
-            <Play className="w-3.5 h-3.5" /> Extract
+          <button
+            onClick={handleExtract}
+            disabled={loading || !targetUrl.trim()}
+            className="px-4 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold hover:bg-orange-500/20 transition-all flex items-center gap-1.5 disabled:opacity-40"
+          >
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+            {loading ? 'Extracting...' : 'Extract'}
           </button>
         </div>
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
           <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Output:</span>
-          {[
-            { icon: Table, label: 'Table' },
-            { icon: Braces, label: 'JSON' },
-            { icon: BarChart3, label: 'Charts' },
-            { icon: Filter, label: 'Filtered' },
-          ].map(o => (
+          {OUTPUT_FORMATS.map(o => (
             <button
-              key={o.label}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium border border-border/30 text-muted-foreground/60 hover:text-muted-foreground hover:border-orange-500/20 transition-all"
+              key={o.id}
+              onClick={() => setOutputFormat(o.id)}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all ${
+                outputFormat === o.id
+                  ? 'bg-orange-500/10 border border-orange-500/30 text-orange-400'
+                  : 'border border-border/30 text-muted-foreground/60 hover:text-muted-foreground'
+              }`}
             >
               <o.icon className="w-3 h-3" /> {o.label}
             </button>
           ))}
+          {result && (
+            <button onClick={handleDownload} className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium border border-border/30 text-muted-foreground hover:text-foreground hover:border-orange-500/20 transition-all">
+              <FileDown className="w-3 h-3" /> Download
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Content area */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-            <Database className="w-7 h-7 text-orange-400" />
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {error && (
+          <div className="max-w-3xl mx-auto p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-sm">
+            <AlertTriangle className="inline w-4 h-4 mr-2" />{error}
           </div>
-          <h2 className="text-lg font-bold text-foreground">Data Extraction Pipeline</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Extract structured data from any website using Firecrawl, Maxun self-healing selectors,
-            and Skyvern vision-based detection. Output as JSON, CSV, or feed into your pipeline.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-            {['Self-healing selectors', 'Pagination handling', 'Anti-detection', 'Scheduled runs', 'API output'].map(feat => (
-              <span key={feat} className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-orange-500/10 border border-orange-500/20 text-orange-400">{feat}</span>
-            ))}
+        )}
+
+        {result && result.status !== 'error' && (
+          <div className="max-w-3xl mx-auto space-y-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ExternalLink className="w-3.5 h-3.5 text-orange-400" />
+              <span className="truncate">{result.url}</span>
+              {result.links_count != null && (
+                <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-orange-500/10 border border-orange-500/20 text-orange-400">{result.links_count} links found</span>
+              )}
+              {result.note && <span className="text-amber-400 text-[10px]">⚠ {result.note}</span>}
+            </div>
+            <div className="p-4 rounded-xl border border-border/30 bg-background/30">
+              <pre className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed font-mono overflow-auto max-h-[65vh]">
+                {result.markdown}
+              </pre>
+            </div>
           </div>
-        </div>
+        )}
+
+        {!result && !error && !loading && (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center space-y-4 max-w-md">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+                <Database className="w-7 h-7 text-orange-400" />
+              </div>
+              <h2 className="text-lg font-bold text-foreground">Data Extraction Pipeline</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Powered by <span className="text-orange-400 font-semibold">Crawl4AI</span> — paste any URL and get clean,
+                LLM-ready output in Markdown, JSON, or plain text. Falls back to direct HTTP if Crawl4AI isn&apos;t installed.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                {['Crawl4AI powered', 'JS rendering', 'Markdown / JSON', 'Download output', 'AI-ready'].map(feat => (
+                  <span key={feat} className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-orange-500/10 border border-orange-500/20 text-orange-400">{feat}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

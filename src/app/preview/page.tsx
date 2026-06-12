@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 
 const PREVIEW_PROJECT_STORAGE_KEY = 'agentbrowser:preview';
 const GENERATED_HTML_STORAGE_KEY = 'agentbrowser:generated-html';
@@ -93,7 +94,7 @@ export default function PreviewPage() {
       <div style={{ minHeight: '100vh', background: '#0a0a12', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, fontFamily: 'system-ui, sans-serif' }}>
         <p style={{ color: '#f87171', fontSize: 16, fontWeight: 600 }}>Something went wrong</p>
         <p style={{ color: '#8890a4', fontSize: 14, maxWidth: 400, textAlign: 'center' }}>{error}</p>
-        <a href="/" style={{ color: '#7c3aed', textDecoration: 'none', fontSize: 14, marginTop: 8 }}>← Back to AgentBrowser</a>
+        <Link href="/" style={{ color: '#7c3aed', textDecoration: 'none', fontSize: 14, marginTop: 8 }}>← Back to AgentBrowser</Link>
       </div>
     );
   }
@@ -103,7 +104,7 @@ export default function PreviewPage() {
       {/* Toolbar */}
       <div style={{ height: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', background: '#15152a', borderBottom: '1px solid #252830', flexShrink: 0, fontFamily: 'system-ui, sans-serif' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <a href="/" style={{ color: '#8890a4', fontSize: 12, textDecoration: 'none' }}>← Back to AgentBrowser</a>
+          <Link href="/" style={{ color: '#8890a4', fontSize: 12, textDecoration: 'none' }}>← Back to AgentBrowser</Link>
           <span style={{ color: '#3b3b50' }}>|</span>
           <span style={{ color: '#8890a4', fontSize: 12 }}>Live Preview</span>
         </div>

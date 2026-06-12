@@ -1,0 +1,219 @@
+name: Deploy — Claw Protect SaaS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Claw-Protect-main/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Deploy target'
+        required: true
+        default: 'railway'
+        type: choice
+        options:
+          - railway
+          - render
+          - docker-registry
+
+permissions:
+  contents: read
+  packages: write   # needed for GHCR
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/claw-protect
+
+jobs:
+  # ── Gate: security scan must pass first ──────────────────────────────────────
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: Claw-Protect-main/package-lock.json
+      - name: Install deps
+        run: npm ci
+        working-directory: Claw-Protect-main
+      - name: TypeScript check
+        run: npx tsc --noEmit
+        working-directory: Claw-Protect-main
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+        working-directory: Claw-Protect-main
+        continue-on-error: true
+
+  # ── Build React SPA ───────────────────────────────────────────────────────────
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: security-gate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: Claw-Protect-main/package-lock.json
+      - name: Install & build
+        run: |
+          npm ci
+          npm run build
+        working-directory: Claw-Protect-main
+        env:
+          NODE_ENV: production
+      - name: Verify dist
+        run: |
+          test -f dist/index.html && echo "✓ dist/index.html present"
+        working-directory: Claw-Protect-main
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: claw-protect-dist
+          path: Claw-Protect-main/dist/
+          retention-days: 1
+
+  # ── Build & push Docker image to GHCR ────────────────────────────────────────
+  docker-build-push:
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    needs: build-frontend
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build-push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: claw-protect-dist
+          path: Claw-Protect-main/dist/
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=short
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        id: build-push
+        uses: docker/build-push-action@v5
+        with:
+          context: Claw-Protect-main
+          dockerfile: Claw-Protect-main/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Skip the build stage — dist/ already downloaded
+          target: runner
+          build-args: |
+            SKIP_VITE_BUILD=1
+
+  # ── Deploy to Railway ─────────────────────────────────────────────────────────
+  deploy-railway:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+    if: github.event_name == 'push' || inputs.target == 'railway'
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        id: deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          cd Claw-Protect-main
+          railway up --detach --service claw-protect-api
+          DEPLOY_URL=$(railway domain 2>/dev/null || echo "")
+          echo "url=https://${DEPLOY_URL}" >> $GITHUB_OUTPUT
+          echo "Deployed: https://${DEPLOY_URL}"
+
+      - name: Health check post-deploy
+        run: |
+          URL="${{ steps.deploy.outputs.url }}"
+          if [[ -n "$URL" && "$URL" != "https://" ]]; then
+            sleep 15
+            curl -sf "$URL/api/health" | python3 -m json.tool || echo "Health check pending..."
+          fi
+
+  # ── Deploy to Render (alternative) ───────────────────────────────────────────
+  deploy-render:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+    if: inputs.target == 'render'
+    steps:
+      - name: Trigger Render deploy hook
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_CLAW_PROTECT }}
+        run: |
+          if [[ -n "$RENDER_DEPLOY_HOOK" ]]; then
+            curl -sf "$RENDER_DEPLOY_HOOK" -X POST
+            echo "Render deploy triggered"
+          else
+            echo "RENDER_DEPLOY_HOOK not set — deploy manually via dashboard"
+          fi
+
+  # ── Post-deploy: Stripe setup verification ────────────────────────────────────
+  post-deploy-verify:
+    name: Post-Deploy Verification
+    runs-on: ubuntu-latest
+    needs: [deploy-railway]
+    if: always() && needs.deploy-railway.result == 'success'
+    steps:
+      - name: Verify API health
+        run: |
+          URL="${{ needs.deploy-railway.outputs.url }}"
+          if [[ -z "$URL" || "$URL" == "https://" ]]; then
+            echo "No URL available for health check"
+            exit 0
+          fi
+          
+          echo "Waiting for deployment to stabilize..."
+          sleep 20
+          
+          echo "=== Health Check ==="
+          curl -sf "$URL/api/health" | python3 -m json.tool
+          
+          echo "=== Pricing Endpoint ==="
+          curl -sf "$URL/api/v1/pricing" | python3 -m json.tool
+          
+          echo "=== Modules Endpoint ==="
+          curl -sf "$URL/api/v1/modules" | python3 -m json.tool | head -50
+          
+          echo "=== Stripe Status ==="
+          curl -sf "$URL/api/v1/stripe/status" | python3 -m json.tool || echo "Stripe not configured yet"
+          
+          echo ""
+          echo "✓ Claw Protect API is live at $URL"
+          echo "✓ Next step: POST $URL/api/v1/stripe/setup (one-time, with STRIPE_SECRET_KEY set)"

@@ -22,6 +22,11 @@ interface SweepResponse {
   targets: SweepTarget[];
   queue: UpgradeLaunchRequest[];
   history: UpgradeLaunchRequest[];
+  settings?: {
+    enabled: boolean;
+    autoUpgradeSafe: boolean;
+    policyLevel: string;
+  };
 }
 
 const TIER_STYLES: Record<ApprovalTier, string> = {
@@ -72,7 +77,7 @@ export default function UpgradeSweepPanel() {
       const res = await fetch('/api/upgrade-sweep', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'launch', targetId }),
+        body: JSON.stringify({ action: 'launch', targetId, autoCreated: data?.settings?.enabled && data.settings.autoUpgradeSafe }),
       });
       const payload = await res.json() as { request?: UpgradeLaunchRequest; error?: string; deduped?: boolean };
       if (!res.ok || payload.error) throw new Error(payload.error ?? 'Launch failed');
@@ -131,6 +136,11 @@ export default function UpgradeSweepPanel() {
         <p className="text-xs text-muted-foreground">
           One click now spawns upgrade requests for Draymond. Low-risk work auto-runs, architecture-heavy changes pause for approval.
         </p>
+        {data?.settings?.enabled && (
+          <p className="text-[10px] text-emerald-400 mt-2">
+            Autonomous mode is active in {data.settings.policyLevel} policy. Safe upgrade jobs can be created automatically.
+          </p>
+        )}
       </div>
 
       <div className="px-4 sm:px-6 py-4 space-y-4">

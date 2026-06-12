@@ -57,6 +57,7 @@ import {
   Monitor,
   Moon,
   MousePointer2,
+  Music,
   Network,
   Package2,
   PartyPopper,
@@ -181,6 +182,7 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   'triangle-alert': TriangleAlert,
   'dot': Dot,
   'bolt': Bolt,
+  'music': Music,
 
   // browser automation / tools
   'bot': Bot,

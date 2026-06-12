@@ -52,3 +52,36 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Test artifacts
+ab-test-*/
+test-results/
+playwright-report/
+/coverage/
+
+# Database
+*.db
+*.db-journal
+
+# Generated data
+ascap_data.json
+ascap_home.png
+ascap_login.png
+mlc_data.json
+merged_catalog.json
+error_screenshot.png
+*.xlsx
+generate_hfa_upload.js
+inspect_template.js
+merge_catalogs.js
+eSong_template.xlsx
+start-sidecar.sh
+
+# Recordings
+/recordings/
+
+# Planning docs
+/plans/
+
+# Scripts
+/scripts/

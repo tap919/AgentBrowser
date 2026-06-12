@@ -1,0 +1,178 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // DENY BY DEFAULT — Explicit allow rules required below
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - displayName: string (optional)
+    //   - role: string (required, ['admin', 'user'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: telemetry
+    // Document ID: {telemetryId}
+    // Fields:
+    //   - uid: string (required)
+    //   - timestamp: timestamp (required)
+    //   - threatLevel: number (required, 0-100)
+    //   - endpoint: map (required)
+    //   - network: map (required)
+    //   - dlp: map (required)
+    //   - identity: map (required)
+    //
+    // Collection: alerts
+    // Document ID: {alertId}
+    // Fields:
+    //   - uid: string (required)
+    //   - type: string (required)
+    //   - severity: string (required, ['Low', 'Medium', 'High'])
+    //   - message: string (required)
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: securityEvents (NEW)
+    // Document ID: {eventId}
+    // Fields:
+    //   - agentId: string (required, UUID format)
+    //   - eventType: string (required)
+    //   - severity: string (required, ['low', 'medium', 'high', 'critical'])
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: securityAuditLog (NEW)
+    // Document ID: {logId}
+    // Fields:
+    //   - agentId: string (required)
+    //   - action: string (required)
+    //   - timestamp: timestamp (required)
+    //   - outcome: string (required, ['success', 'failure', 'blocked'])
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "ncsound919@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isServiceAccount() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.uid == request.auth.uid &&
+             data.email is string && isValidEmail(data.email) &&
+             data.role in ['admin', 'user'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidTelemetry(data) {
+      return data.uid == request.auth.uid &&
+             data.timestamp is timestamp &&
+             data.threatLevel is number && data.threatLevel >= 0 && data.threatLevel <= 100 &&
+             data.endpoint is map &&
+             data.network is map &&
+             data.dlp is map &&
+             data.identity is map;
+    }
+
+    function isValidAlert(data) {
+      return data.uid == request.auth.uid &&
+             data.type is string &&
+             data.severity in ['Low', 'Medium', 'High'] &&
+             data.message is string && data.message.size() < 1000 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidSecurityEvent(data) {
+      return data.keys().hasAll(['timestamp', 'agentId', 'eventType', 'severity']) &&
+             data.agentId is string &&
+             data.eventType is string && data.eventType.size() > 0 &&
+             data.severity in ['low', 'medium', 'high', 'critical'] &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['agentId', 'action', 'timestamp', 'outcome']) &&
+             data.agentId is string &&
+             data.action is string && data.action.size() > 0 && data.action.size() <= 200 &&
+             data.outcome in ['success', 'failure', 'blocked'] &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /telemetry/{telemetryId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidTelemetry(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /alerts/{alertId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidAlert(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    // Security Events Collection — Agent activity monitoring
+    match /securityEvents/{eventId} {
+      allow read: if isAuthenticated() &&
+                     (request.auth.uid == resource.data.agentId || isAdmin());
+      allow create: if isAuthenticated() && isValidSecurityEvent(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    // Security Audit Log — Service accounts and admins only
+    match /securityAuditLog/{logId} {
+      allow read: if isServiceAccount() || isAdmin();
+      allow write: if isServiceAccount() || isAdmin();
+    }
+  }
+}

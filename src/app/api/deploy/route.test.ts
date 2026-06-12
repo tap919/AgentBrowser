@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GET, POST } from '@/app/api/deploy/route';
 
+const LONG_TOKEN = 'valid-token-12345xxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+
 describe('deploy proxy route', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -13,10 +15,19 @@ describe('deploy proxy route', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Vercel token required' });
   });
 
+  it('rejects short tokens', async () => {
+    const response = await GET(
+      new Request('http://localhost/api/deploy?action=projects', {
+        headers: { Authorization: 'Bearer short' },
+      })
+    );
+    expect(response.status).toBe(401);
+  });
+
   it('returns an error for an unknown GET action', async () => {
     const response = await GET(
       new Request('http://localhost/api/deploy?action=unknown', {
-        headers: { Authorization: 'Bearer valid-token-12345' },
+        headers: { Authorization: `Bearer ${LONG_TOKEN}` },
       })
     );
 
@@ -32,7 +43,7 @@ describe('deploy proxy route', () => {
 
     const response = await GET(
       new Request('http://localhost/api/deploy?action=projects', {
-        headers: { Authorization: 'Bearer valid-token-12345' },
+        headers: { Authorization: `Bearer ${LONG_TOKEN}` },
       })
     );
 
@@ -50,7 +61,7 @@ describe('deploy proxy route', () => {
       new Request('http://localhost/api/deploy', {
         method: 'POST',
         headers: {
-          Authorization: 'Bearer valid-token-12345',
+          Authorization: `Bearer ${LONG_TOKEN}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ projectName: 'My App!!!' }),

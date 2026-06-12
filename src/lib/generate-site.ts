@@ -7,6 +7,8 @@
  */
 
 /* ─── Types ─── */
+const MAX_INPUT_LENGTHS = { name: 200, description: 5000, type: 100, audience: 200 };
+
 export interface GeneratorInput {
   name: string;
   description: string;
@@ -20,6 +22,10 @@ export interface GeneratedSite {
   sections: string[];
   palette: string;
   businessType: string;
+}
+
+function truncate(str: string, maxLen: number): string {
+  return str.length > maxLen ? str.slice(0, maxLen) : str;
 }
 
 interface Palette {
@@ -458,7 +464,10 @@ function detectPalette(desc: string): Palette {
 
 /* ─── HTML Generator ─── */
 export function generateSite(input: GeneratorInput): GeneratedSite {
-  const { name, description, type = 'Website', audience = 'everyone' } = input;
+  const name = truncate(input.name || 'Project', MAX_INPUT_LENGTHS.name);
+  const description = truncate(input.description || '', MAX_INPUT_LENGTHS.description);
+  const type = truncate(input.type || 'Website', MAX_INPUT_LENGTHS.type);
+  const audience = truncate(input.audience || 'everyone', MAX_INPUT_LENGTHS.audience);
   const bizType = detectBusinessType(description, type, name);
   const allProfiles = { ...PROFILES, ...MORE_PROFILES };
   const profile = (allProfiles[bizType] || allProfiles.generic)(name, description, audience);

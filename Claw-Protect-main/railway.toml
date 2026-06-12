@@ -1,0 +1,17 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Claw Protect — Railway deployment config
+# Deploy via: railway up  (from Claw-Protect-main/)
+# ─────────────────────────────────────────────────────────────────────────────
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "node --loader tsx/esm server.ts"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "claw-protect-api"

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Rocket, DollarSign, Zap, BookOpen, LineChart, Wrench, TrendingUp,
-  ArrowRight, CheckCircle2, Clock, AlertCircle, Sparkles, ShoppingCart, ExternalLink,
+  ArrowRight, CheckCircle2, Clock, AlertCircle, Sparkles, ShoppingCart, ExternalLink, Globe,
 } from 'lucide-react';
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -280,6 +281,14 @@ function ComboCard({ chain }: { chain: ComboChain }) {
 /* ─── Main Panel ────────────────────────────────────────── */
 
 export default function VenturesPanel() {
+  const [tab, setTab] = useState<'dashboard' | 'ventures'>('dashboard');
+
+  if (tab === 'dashboard') {
+    return (
+      <DashboardShell onSwitchVentures={() => setTab('ventures')} />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -293,6 +302,10 @@ export default function VenturesPanel() {
             {VENTURES.length} ventures · {COMBO_CHAINS.length} unique combo chains · powered by {new Set(VENTURES.flatMap(v => v.tools)).size}+ tools
           </p>
         </div>
+        <button onClick={() => setTab('dashboard')}
+          className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium border border-border/30 hover:bg-muted/10 transition-all">
+          Dashboard
+        </button>
       </div>
 
       {/* Venture grid */}
@@ -314,6 +327,30 @@ export default function VenturesPanel() {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function DashboardShell({ onSwitchVentures }: { onSwitchVentures: () => void }) {
+  const Dashboard = dynamic(() => import('@/features/ventures/components/Dashboard').then(m => ({ default: m.Dashboard })), { ssr: false });
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 rounded-lg bg-purple-500/10">
+          <Globe className="w-5 h-5 text-purple-400" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">NCSOUND Dashboard</h2>
+          <p className="text-xs text-muted-foreground">
+            Projects · Tools · GitHub · Business
+          </p>
+        </div>
+        <button onClick={onSwitchVentures}
+          className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium border border-border/30 hover:bg-muted/10 transition-all">
+          Ventures
+        </button>
+      </div>
+      <Dashboard />
     </div>
   );
 }

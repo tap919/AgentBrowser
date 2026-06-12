@@ -41,5 +41,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ stars, fetchedAt: Date.now() });
+  return NextResponse.json({ stars, fetchedAt: new Date().toISOString() });
 }

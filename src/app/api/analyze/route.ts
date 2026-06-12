@@ -138,7 +138,7 @@ function buildFallbackAnalysis(
   ];
 
   return {
-    summary: `A ${type.toLowerCase()} named "${projectName}" — ${description.slice(0, 250) || 'a modern web project'}. Built to serve ${audience.toLowerCase()} with a performance-first, accessible architecture.`,
+    summary: `A ${type.toLowerCase()} named "${escapeHtml(projectName)}" — ${escapeHtml(description.slice(0, 250)) || 'a modern web project'}. Built to serve ${escapeHtml(audience.toLowerCase())} with a performance-first, accessible architecture.`,
     architecture: {
       frontend: isLanding
         ? 'Next.js 15 (static export) with React 19, TypeScript, Tailwind CSS, and Framer Motion'
@@ -175,4 +175,13 @@ function buildFallbackAnalysis(
           'Deploy Pipeline',
         ],
   };
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

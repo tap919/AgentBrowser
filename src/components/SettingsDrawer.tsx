@@ -211,8 +211,10 @@ export default function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
         id: crypto.randomUUID(),
         name: file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
         description: '',
+        type: 'config',
         config: content,
         fileName: file.name,
+        securityTier: 'full',
         enabled: true,
         addedAt: new Date().toISOString(),
       };
@@ -397,6 +399,108 @@ export default function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                   </button>
                 </div>
               </div>
+
+              {/* Additional providers - OpenRouter */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <button type="button"
+                  onClick={() => update('modelProvider', 'openrouter')}
+                  className={`p-3 rounded-xl border text-left transition-all hover:scale-[1.02] ${
+                    settings.modelProvider === 'openrouter'
+                      ? 'border-primary/50 bg-primary/10'
+                      : 'border-border/30 bg-background/20 hover:border-primary/30'
+                  }`}>
+                  <p className="text-xs font-semibold">OpenRouter</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Unified API 100+ models</p>
+                </button>
+                <button type="button"
+                  onClick={() => update('modelProvider', 'opencode')}
+                  className={`p-3 rounded-xl border text-left transition-all hover:scale-[1.02] ${
+                    settings.modelProvider === 'opencode'
+                      ? 'border-primary/50 bg-primary/10'
+                      : 'border-border/30 bg-background/20 hover:border-primary/30'
+                  }`}>
+                  <p className="text-xs font-semibold">OpenCode</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Code-specialized AI</p>
+                </button>
+                <button type="button"
+                  onClick={() => update('modelProvider', 'qwen')}
+                  className={`p-3 rounded-xl border text-left transition-all hover:scale-[1.02] ${
+                    settings.modelProvider === 'qwen'
+                      ? 'border-primary/50 bg-primary/10'
+                      : 'border-border/30 bg-background/20 hover:border-primary/30'
+                  }`}>
+                  <p className="text-xs font-semibold">Qwen</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Alibaba Code CLI</p>
+                </button>
+              </div>
+
+              {/* OpenRouter config */}
+              {settings.modelProvider === 'openrouter' && (
+                <div className="space-y-4 p-4 rounded-xl border border-purple-500/20 bg-purple-500/5">
+                  <SectionHeader icon={Sparkles} title="OpenRouter Configuration" />
+                  <MaskedInput
+                    label="API Key"
+                    value={settings.openRouter.apiKey}
+                    onChange={v => updateNested('openRouter', { apiKey: v })}
+                    placeholder="sk-or-v1-..."
+                    helpText="Get your key from openrouter.ai/keys"
+                  />
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Model</label>
+                    <select
+                      value={settings.openRouter.modelName}
+                      onChange={e => updateNested('openRouter', { modelName: e.target.value })}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-border/30 bg-background/40 focus:outline-none focus:border-primary/40"
+                    >
+                      <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                      <option value="openai/gpt-4o">GPT-4o</option>
+                      <option value="google/gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                      <option value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B</option>
+                      <option value="deepseek/deepseek-chat">DeepSeek Chat</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* OpenCode config */}
+              {settings.modelProvider === 'opencode' && (
+                <div className="space-y-4 p-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5">
+                  <SectionHeader icon={Code2} title="OpenCode Configuration" />
+                  <MaskedInput
+                    label="API Key"
+                    value={settings.openCode.apiKey}
+                    onChange={v => updateNested('openCode', { apiKey: v })}
+                    placeholder="ock_..."
+                    helpText="Get your key from opencode.ai"
+                  />
+                </div>
+              )}
+
+              {/* Qwen config */}
+              {settings.modelProvider === 'qwen' && (
+                <div className="space-y-4 p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
+                  <SectionHeader icon={Brain} title="Alibaba Qwen Configuration" />
+                  <MaskedInput
+                    label="API Key"
+                    value={settings.qwen.apiKey}
+                    onChange={v => updateNested('qwen', { apiKey: v })}
+                    placeholder="sk-..."
+                    helpText="Get your key from dashscope.console.aliyun.com"
+                  />
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Model</label>
+                    <select
+                      value={settings.qwen.modelName}
+                      onChange={e => updateNested('qwen', { modelName: e.target.value })}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-border/30 bg-background/40 focus:outline-none focus:border-primary/40"
+                    >
+                      <option value="qwen-coder-turbo">Qwen Coder Turbo</option>
+                      <option value="qwen-plus">Qwen Plus</option>
+                      <option value="qwen-turbo">Qwen Turbo</option>
+                    </select>
+                  </div>
+                </div>
+              )}
 
               {settings.modelProvider === 'local' && (
                 <div className="space-y-4 p-4 rounded-xl border border-orange-500/20 bg-orange-500/5">

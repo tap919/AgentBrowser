@@ -1,13 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { AppIcon } from '@/lib/icons';
 import { WORKSPACE_MODES, type WorkspaceMode } from '@/lib/workspace';
+import { Download } from 'lucide-react';
 
 interface ModeSwitcherProps {
   mode: WorkspaceMode;
   onChange: (mode: WorkspaceMode) => void;
-  /** Show a pulsing indicator that a build is running in background */
   buildRunning?: boolean;
+  onDownload?: (mode: WorkspaceMode) => void;
 }
 
 const modeColors: Record<WorkspaceMode, { active: string; ring: string; dot: string }> = {
@@ -15,11 +17,14 @@ const modeColors: Record<WorkspaceMode, { active: string; ring: string; dot: str
   browse:   { active: 'bg-blue-500/15 text-blue-400 border-blue-500/30', ring: 'ring-blue-500/20', dot: 'bg-blue-400' },
   research: { active: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30', ring: 'ring-cyan-500/20', dot: 'bg-cyan-400' },
   scrape:   { active: 'bg-orange-500/15 text-orange-400 border-orange-500/30', ring: 'ring-orange-500/20', dot: 'bg-orange-400' },
-  ventures: { active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', ring: 'ring-emerald-500/20', dot: 'bg-emerald-400' },
   security: { active: 'bg-red-500/15 text-red-400 border-red-500/30', ring: 'ring-red-500/20', dot: 'bg-red-400' },
+  'music-rights': { active: 'bg-pink-500/15 text-pink-400 border-pink-500/30', ring: 'ring-pink-500/20', dot: 'bg-pink-400' },
+  ventures: { active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', ring: 'ring-emerald-500/20', dot: 'bg-emerald-400' },
 };
 
-export default function ModeSwitcher({ mode, onChange, buildRunning }: ModeSwitcherProps) {
+export default function ModeSwitcher({ mode, onChange, buildRunning, onDownload }: ModeSwitcherProps) {
+  const [hoveredMode, setHoveredMode] = useState<WorkspaceMode | null>(null);
+
   return (
     <div className="flex items-center gap-0.5 rounded-lg border border-border/30 bg-background/20 p-0.5">
       {WORKSPACE_MODES.map(m => {
@@ -30,6 +35,8 @@ export default function ModeSwitcher({ mode, onChange, buildRunning }: ModeSwitc
           <button
             key={m.id}
             onClick={() => onChange(m.id)}
+            onMouseEnter={() => setHoveredMode(m.id)}
+            onMouseLeave={() => setHoveredMode(null)}
             title={m.description}
             className={`relative flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold transition-all duration-200 ${
               isActive
@@ -39,7 +46,6 @@ export default function ModeSwitcher({ mode, onChange, buildRunning }: ModeSwitc
           >
             <AppIcon name={m.icon} className="w-3 h-3" />
             <span className="hidden sm:inline">{m.label}</span>
-            {/* Build running indicator when not on build tab */}
             {m.id === 'build' && buildRunning && !isActive && (
               <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${colors.dot} animate-pulse`} />
             )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { AppIcon } from '@/lib/icons';
 import { formatStars } from '@/lib/trending-repos';
 import { ChevronRight, ExternalLink, Star, TrendingUp } from 'lucide-react';
@@ -339,10 +339,42 @@ type CategoryFilter = 'all' | ToolInfo['category'];
 export default function ToolEcosystem() {
   const [filter, setFilter] = useState<CategoryFilter>('all');
   const [expandedTool, setExpandedTool] = useState<string | null>(null);
+  const [liveStatus, setLiveStatus] = useState<Record<string, boolean>>({});
 
-  const filtered = useMemo(() => filter === 'all' ? TOOLS : TOOLS.filter(t => t.category === filter), [filter]);
-  const integratedCount = useMemo(() => TOOLS.filter(t => t.integrated).length, []);
-  const trendingCount = useMemo(() => TOOLS.filter(t => t.trending).length, []);
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch('http://127.0.0.1:8888/tools/status', { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const data = await res.json();
+          setLiveStatus(data);
+        }
+      } catch {
+        // Big Homie backend not running — tools show default integrated status
+      }
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const toolsWithStatus = useMemo(() => {
+    return TOOLS.map(t => {
+      // Map live status keys to tool names (slugified or direct)
+      const key = t.name.toLowerCase().replace(/\s+/g, '-');
+      if (liveStatus[key] !== undefined) {
+        return { ...t, integrated: liveStatus[key] };
+      }
+      return t;
+    });
+  }, [liveStatus]);
+
+  const filtered = useMemo(() => filter === 'all' ? toolsWithStatus : toolsWithStatus.filter(t => t.category === filter), [filter, toolsWithStatus]);
+  const integratedCount = useMemo(() => toolsWithStatus.filter(t => t.integrated).length, [toolsWithStatus]);
+  const trendingCount = useMemo(() => toolsWithStatus.filter(t => t.trending).length, [toolsWithStatus]);
 
   return (
     <div className="w-full rounded-2xl border border-border/30 bg-background/20 overflow-hidden">

@@ -1,0 +1,356 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://clawprotect.dev/schemas/claw-protect-payload.schema.json",
+  "title": "Claw Protect Telemetry Payload",
+  "description": "Canonical JSON Schema for telemetry, alert, and configuration payloads exchanged between Claw Protect agents and the control plane.",
+  "definitions": {
+    "semver": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$",
+      "description": "Semantic version string (major.minor.patch with optional pre-release/build)"
+    },
+    "iso8601": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 datetime string with timezone offset"
+    },
+    "threatScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Normalized threat score (0 = safe, 100 = critical)"
+    },
+    "severityLevel": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Four-tier severity classification"
+    },
+    "dataClassification": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted"],
+      "description": "Data classification level for governance and compliance"
+    },
+    "dataCategory": {
+      "type": "string",
+      "enum": ["pii", "phi", "pci", "secrets", "telemetry", "logs", "metadata", "general"],
+      "description": "Data category for DLP and compliance tracking"
+    },
+    "metadataTags": {
+      "type": "object",
+      "description": "Metadata classification tags for data minimization and governance",
+      "properties": {
+        "classification": { "$ref": "#/definitions/dataClassification" },
+        "category": { "$ref": "#/definitions/dataCategory" },
+        "retention": {
+          "type": "string",
+          "enum": ["7d", "30d", "90d", "1y", "7y", "indefinite"],
+          "description": "Data retention period"
+        },
+        "complianceFrameworks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["GDPR", "HIPAA", "SOC2", "PCI-DSS", "ISO27001", "NIST", "CCPA"]
+          },
+          "description": "Applicable compliance frameworks"
+        },
+        "minimized": {
+          "type": "boolean",
+          "description": "Whether data has been minimized (only essential fields collected)"
+        },
+        "encrypted": {
+          "type": "boolean",
+          "description": "Whether data is encrypted at rest and in transit"
+        },
+        "anonymized": {
+          "type": "boolean",
+          "description": "Whether PII has been anonymized or pseudonymized"
+        }
+      },
+      "required": ["classification", "category"]
+    },
+    "agentInfo": {
+      "type": "object",
+      "description": "Agent identity and metadata",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Unique agent identifier"
+        },
+        "agentType": {
+          "type": "string",
+          "enum": ["openclaw", "hermes", "custom", "unknown"],
+          "description": "Agent framework type"
+        },
+        "version": { "$ref": "#/definitions/semver" },
+        "hostname": { "type": "string", "description": "Host where agent runs" },
+        "region": {
+          "type": "string",
+          "description": "Deployment region (e.g., us-east-1, eu-west-1)"
+        }
+      },
+      "required": ["agentId", "agentType"],
+      "additionalProperties": false
+    },
+    "endpointTelemetry": {
+      "type": "object",
+      "description": "Endpoint-level security telemetry",
+      "properties": {
+        "agentId": { "type": "string", "minLength": 1 },
+        "hostname": { "type": "string" },
+        "ipAddress": { "type": "string", "format": "ipv4" },
+        "osType": {
+          "type": "string",
+          "enum": ["linux", "macos", "windows", "container"]
+        },
+        "uptimeSeconds": { "type": "integer", "minimum": 0 },
+        "cpuPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "memoryPercent": { "type": "number", "minimum": 0, "maximum": 100 }
+      },
+      "required": ["agentId"]
+    },
+    "networkTelemetry": {
+      "type": "object",
+      "description": "Network-level security telemetry",
+      "properties": {
+        "outboundTransfers": { "type": "integer", "minimum": 0 },
+        "totalBytesOut": { "type": "integer", "minimum": 0 },
+        "suspiciousDestinations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "beaconingDetected": { "type": "boolean" }
+      }
+    },
+    "dlpTelemetry": {
+      "type": "object",
+      "description": "Data Loss Prevention telemetry",
+      "properties": {
+        "secretsFound": { "type": "integer", "minimum": 0 },
+        "sensitiveDataTypes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "exfiltrationRisk": { "$ref": "#/definitions/severityLevel" }
+      }
+    },
+    "identityTelemetry": {
+      "type": "object",
+      "description": "Identity and trust telemetry",
+      "properties": {
+        "agentId": { "type": "string" },
+        "trustScore": { "$ref": "#/definitions/threatScore" },
+        "authMethod": {
+          "type": "string",
+          "enum": ["challenge-response", "mTLS", "jwt", "api-key"]
+        },
+        "spoofingAttempts": { "type": "integer", "minimum": 0 },
+        "lastAuthAt": { "$ref": "#/definitions/iso8601" }
+      }
+    },
+    "telemetryPayload": {
+      "type": "object",
+      "title": "Telemetry Payload",
+      "description": "Security telemetry signal from a monitored agent or endpoint.",
+      "properties": {
+        "payloadType": { "type": "string", "const": "telemetry" },
+        "uid": { "type": "string", "minLength": 1, "description": "Owner UID" },
+        "timestamp": { "$ref": "#/definitions/iso8601" },
+        "threatLevel": { "$ref": "#/definitions/threatScore" },
+        "agent": { "$ref": "#/definitions/agentInfo" },
+        "endpoint": { "$ref": "#/definitions/endpointTelemetry" },
+        "network": { "$ref": "#/definitions/networkTelemetry" },
+        "dlp": { "$ref": "#/definitions/dlpTelemetry" },
+        "identity": { "$ref": "#/definitions/identityTelemetry" },
+        "metadata": { "$ref": "#/definitions/metadataTags" }
+      },
+      "required": ["payloadType", "uid", "timestamp", "threatLevel"],
+      "additionalProperties": false
+    },
+    "alertPayload": {
+      "type": "object",
+      "title": "Alert Payload",
+      "description": "Security alert generated by the Claw Protect detection engine.",
+      "properties": {
+        "payloadType": { "type": "string", "const": "alert" },
+        "alertId": { "type": "string", "minLength": 1, "description": "Unique alert identifier" },
+        "uid": { "type": "string", "minLength": 1 },
+        "type": {
+          "type": "string",
+          "enum": [
+            "prompt_injection",
+            "behavioral_drift",
+            "secret_exposure",
+            "excessive_permissions",
+            "data_exfiltration",
+            "identity_spoofing",
+            "supply_chain",
+            "shadow_agent",
+            "runaway_loop",
+            "resource_exhaustion",
+            "ransomware",
+            "zero_trust_violation",
+            "iot_anomaly",
+            "cloud_misconfiguration"
+          ]
+        },
+        "severity": { "$ref": "#/definitions/severityLevel" },
+        "message": { "type": "string", "maxLength": 1000 },
+        "timestamp": { "$ref": "#/definitions/iso8601" },
+        "moduleSource": { "type": "string" },
+        "agentId": { "type": "string" },
+        "resolved": { "type": "boolean", "default": false },
+        "resolvedAt": { "$ref": "#/definitions/iso8601" },
+        "metadata": { "$ref": "#/definitions/metadataTags" },
+        "reasoning": {
+          "type": "object",
+          "description": "Explainability and reasoning trace for the alert decision",
+          "properties": {
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Confidence score for the detection (0-100)"
+            },
+            "detectionMethod": {
+              "type": "string",
+              "description": "Method used to detect the threat (e.g., 'pattern-matching', 'ml-model', 'behavioral-analysis')"
+            },
+            "triggeredRules": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "List of detection rules or patterns that triggered"
+            },
+            "evidenceChain": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "step": { "type": "integer", "minimum": 1 },
+                  "observation": { "type": "string" },
+                  "conclusion": { "type": "string" }
+                },
+                "required": ["step", "observation", "conclusion"]
+              },
+              "description": "Step-by-step reasoning chain showing how the conclusion was reached"
+            },
+            "contributingFactors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "factor": { "type": "string" },
+                  "weight": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Normalized weight of this factor (0-1)"
+                  }
+                },
+                "required": ["factor", "weight"]
+              },
+              "description": "Factors that contributed to the alert with their relative weights"
+            },
+            "falsePositiveLikelihood": {
+              "type": "string",
+              "enum": ["very-low", "low", "medium", "high"],
+              "description": "Estimated likelihood this is a false positive"
+            },
+            "relatedAlerts": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "IDs of related or correlated alerts"
+            },
+            "humanGuidance": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Plain-language explanation for analysts validating this decision"
+            }
+          },
+          "required": ["confidence", "detectionMethod"]
+        }
+      },
+      "required": ["payloadType", "alertId", "uid", "type", "severity", "message", "timestamp"],
+      "additionalProperties": false
+    },
+    "configPayload": {
+      "type": "object",
+      "title": "Configuration Payload",
+      "description": "Per-tenant security module configuration.",
+      "properties": {
+        "payloadType": { "type": "string", "const": "config" },
+        "uid": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/definitions/semver" },
+        "pricingTier": {
+          "type": "string",
+          "enum": ["free", "starter", "pro", "enterprise"]
+        },
+        "modules": {
+          "type": "object",
+          "properties": {
+            "promptInjection": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "sensitivity": { "type": "string", "enum": ["low", "medium", "high"] }
+              },
+              "required": ["enabled"]
+            },
+            "agentMonitor": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "runawayThreshold": { "type": "integer", "minimum": 10, "default": 50 },
+                "runawayWindowMinutes": { "type": "integer", "minimum": 1, "default": 5 }
+              },
+              "required": ["enabled"]
+            },
+            "secretsScanner": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "autoRedact": { "type": "boolean", "default": true }
+              },
+              "required": ["enabled"]
+            },
+            "dataExfiltration": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "maxTransferBytes": { "type": "integer", "minimum": 0, "default": 10485760 },
+                "trustedDomains": { "type": "array", "items": { "type": "string" } }
+              },
+              "required": ["enabled"]
+            },
+            "zeroTrust": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "minTrustScore": { "type": "number", "minimum": 0, "maximum": 100, "default": 60 }
+              },
+              "required": ["enabled"]
+            },
+            "ransomwareDefense": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "backupVerificationInterval": { "type": "integer", "minimum": 60, "default": 3600 }
+              },
+              "required": ["enabled"]
+            }
+          }
+        },
+        "updatedAt": { "$ref": "#/definitions/iso8601" }
+      },
+      "required": ["payloadType", "uid", "version", "pricingTier", "modules"],
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/definitions/telemetryPayload" },
+    { "$ref": "#/definitions/alertPayload" },
+    { "$ref": "#/definitions/configPayload" }
+  ]
+}

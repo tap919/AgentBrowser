@@ -54,15 +54,40 @@ type SecurityEventFilter = 'all' | 'blocked' | 'warnings';
 
 export default function SecurityDashboard() {
   const [securityLevel, setSecurityLevel] = useState<SecurityLevel>('active');
-  const [securityStatus, setSecurityStatus] = useState<SecurityStatus>('secure');
   const [events, setEvents] = useState<SecurityEvent[]>(() => createInitialEvents());
   const [eventFilter, setEventFilter] = useState<SecurityEventFilter>('all');
-
-  const status = STATUS_CONFIG[securityStatus];
 
   const totalChecks = events.length;
   const blockedCount = events.filter(e => e.type === 'block').length;
   const warningsCount = events.filter(e => e.type === 'alert').length;
+
+  const securityStatus: SecurityStatus = blockedCount > 0 ? 'critical' : warningsCount > 0 ? 'warning' : 'secure';
+  const status = STATUS_CONFIG[securityStatus];
+
+  const addSecurityEvent = (type: SecurityEvent['type'], message: string) => {
+    const event: SecurityEvent = {
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      type,
+      message,
+    };
+    setEvents(prev => [event, ...prev]);
+  };
+
+  const handleScanNow = async () => {
+    addSecurityEvent('scan', 'Manual security scan initiated');
+    const clawProtectUrl = process.env.NEXT_PUBLIC_CLAW_PROTECT_URL || 'http://localhost:3333';
+    try {
+      const res = await fetch(`${clawProtectUrl}/api/health`);
+      if (res.ok) {
+        addSecurityEvent('info', 'Claw Protect connection verified - system healthy');
+      } else {
+        addSecurityEvent('alert', `Claw Protect responded with status ${res.status}`);
+      }
+    } catch {
+      addSecurityEvent('alert', `Claw Protect unreachable at ${clawProtectUrl} - running in standalone mode`);
+    }
+  };
 
   const filteredEvents = events.filter(event => {
     if (eventFilter === 'all') return true;
@@ -201,7 +226,7 @@ export default function SecurityDashboard() {
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
-          onClick={() => console.log('Scan triggered')}
+          onClick={handleScanNow}
           className="flex items-center justify-center gap-2 p-3 rounded-xl border border-border/30 bg-background/20 hover:bg-background/30 transition-all"
         >
           <Eye className="w-4 h-4 text-muted-foreground" />

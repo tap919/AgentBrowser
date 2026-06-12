@@ -9,6 +9,7 @@ import {
 describe('credentials store', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -20,7 +21,7 @@ describe('credentials store', () => {
       supabaseKey: '',
     });
 
-    localStorage.setItem('ab_credentials', '{bad json');
+    localStorage.setItem('ab_credentials_enc', 'corrupt-data');
     expect(getCredentials().githubToken).toBe('');
   });
 
@@ -46,12 +47,45 @@ describe('credentials store', () => {
     expect(hasGitHubToken()).toBe(false);
 
     saveCredentials({
-      githubToken: 'ghp_12345678901',
+      githubToken: 'ghp_1234567890123456789012345678901234567890',
       vercelToken: '',
       supabaseUrl: '',
       supabaseKey: '',
     });
 
     expect(hasGitHubToken()).toBe(true);
+  });
+
+  it('stored value is not plaintext', () => {
+    saveCredentials({
+      githubToken: 'ghp_secret_token_12345',
+      vercelToken: '',
+      supabaseUrl: '',
+      supabaseKey: '',
+    });
+
+    const raw = localStorage.getItem('ab_credentials_enc');
+    expect(raw).not.toBeNull();
+    expect(raw).not.toContain('ghp_secret_token_12345');
+    expect(raw).not.toContain('githubToken');
+  });
+
+  it('can round-trip encrypt/decrypt', () => {
+    const creds = {
+      githubToken: 'ghp_roundtrip_test',
+      vercelToken: 'vercel_abc123',
+      supabaseUrl: 'https://project.supabase.co',
+      supabaseKey: 'sb_key_xyz',
+    };
+
+    saveCredentials(creds);
+    const loaded = getCredentials();
+    expect(loaded).toEqual(creds);
+  });
+
+  it('corrupt data returns defaults (no crash)', () => {
+    localStorage.setItem('ab_credentials_enc', '!!!not-valid-base64!!!');
+    const result = getCredentials();
+    expect(result.githubToken).toBe('');
   });
 });

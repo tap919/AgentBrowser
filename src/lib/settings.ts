@@ -2,25 +2,41 @@
 // Separate from credentials (tokens) — this holds preferences and configuration.
 
 export type AppMode = 'easy' | 'dev';
-export type ModelProvider = 'cloud' | 'local';
+export type ModelProvider = 'cloud' | 'local' | 'openrouter' | 'opencode' | 'qwen' | 'deepseek';
 
 export interface LocalModelConfig {
   provider: 'ollama' | 'lmstudio' | 'llamacpp' | 'custom';
   endpoint: string;
   modelName: string;
-  apiKey: string; // optional for local, needed for custom
+  apiKey: string;
 }
 
-export interface CustomAgent {
-  id: string;
-  name: string;
-  description: string;
-  /** Base64 content or URL to agent config file */
-  config: string;
-  fileName: string;
-  enabled: boolean;
-  addedAt: string;
+export interface OpenRouterConfig {
+  endpoint: string;
+  modelName: string;
+  apiKey: string;
 }
+
+export interface OpenCodeConfig {
+  endpoint: string;
+  apiKey: string;
+}
+
+export interface QwenConfig {
+  endpoint: string;
+  apiKey: string;
+  modelName: string;
+}
+
+export interface DeepSeekConfig {
+  endpoint: string;
+  apiKey: string;
+  modelName: string;
+}
+
+import type { CustomAgent as FeatureCustomAgent } from '@/features/agents/types';
+
+export type CustomAgent = FeatureCustomAgent;
 
 export interface IntegrationConfig {
   id: string;
@@ -31,12 +47,18 @@ export interface IntegrationConfig {
   phases: number[];
 }
 
-export type SecurityLevel = 'passive' | 'active' | 'configurable';
+import type { SecurityLevel as SecurityLevelType } from '@/features/security/types';
+
+export type SecurityLevel = SecurityLevelType;
 
 export interface AppSettings {
   mode: AppMode;
   modelProvider: ModelProvider;
   localModel: LocalModelConfig;
+  openRouter: OpenRouterConfig;
+  openCode: OpenCodeConfig;
+  qwen: QwenConfig;
+  deepSeek: DeepSeekConfig;
   customAgents: CustomAgent[];
   integrations: IntegrationConfig[];
   pipeline: {
@@ -54,6 +76,15 @@ export interface AppSettings {
     compactView: boolean;
     showTechDetails: boolean;
   };
+  // Integrated GitHub repos (not GitHub panel)
+  githubRepos: {
+    id: string;
+    name: string;
+    fullName: string;
+    url: string;
+    defaultBranch: string;
+    lastSynced: string;
+  }[];
 }
 
 const STORAGE_KEY = 'ab_settings';
@@ -98,6 +129,25 @@ const DEFAULTS: AppSettings = {
     modelName: 'llama3.1',
     apiKey: '',
   },
+  openRouter: {
+    endpoint: 'https://openrouter.ai/api/v1',
+    modelName: 'anthropic/claude-3.5-sonnet',
+    apiKey: '',
+  },
+  openCode: {
+    endpoint: 'https://api.opencode.io/v1',
+    apiKey: '',
+  },
+  qwen: {
+    endpoint: 'https://dashscope.aliyuncs.com/api/v1',
+    apiKey: '',
+    modelName: 'qwen-coder-turbo',
+  },
+  deepSeek: {
+    endpoint: 'https://api.deepseek.com/v1',
+    apiKey: '',
+    modelName: 'deepseek-chat',
+  },
   customAgents: [],
   integrations: DEFAULT_INTEGRATIONS,
   pipeline: {
@@ -115,6 +165,7 @@ const DEFAULTS: AppSettings = {
     compactView: false,
     showTechDetails: false,
   },
+  githubRepos: [],
 };
 
 export function getSettings(): AppSettings {
@@ -128,11 +179,16 @@ export function getSettings(): AppSettings {
       ...DEFAULTS,
       ...parsed,
       localModel: { ...DEFAULTS.localModel, ...(parsed.localModel ?? {}) },
+      openRouter: { ...DEFAULTS.openRouter, ...(parsed.openRouter ?? {}) },
+      openCode: { ...DEFAULTS.openCode, ...(parsed.openCode ?? {}) },
+      qwen: { ...DEFAULTS.qwen, ...(parsed.qwen ?? {}) },
+      deepSeek: { ...DEFAULTS.deepSeek, ...(parsed.deepSeek ?? {}) },
       pipeline: { ...DEFAULTS.pipeline, ...(parsed.pipeline ?? {}) },
       security: { ...DEFAULTS.security, ...(parsed.security ?? {}) },
       ui: { ...DEFAULTS.ui, ...(parsed.ui ?? {}) },
       integrations: parsed.integrations?.length ? parsed.integrations : DEFAULTS.integrations,
       customAgents: parsed.customAgents ?? [],
+      githubRepos: parsed.githubRepos ?? [],
     };
   } catch {
     return structuredClone(DEFAULTS);

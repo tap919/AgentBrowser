@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  agentbrowser:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=file:./prisma/dev.db
+      - AGENT_API_KEY=${AGENT_API_KEY:-}
+      - CAPTCHA_PROVIDER=${CAPTCHA_PROVIDER:-none}
+      - CAPTCHA_API_KEY=${CAPTCHA_API_KEY:-}
+      - LLM_VISION_API_KEY=${LLM_VISION_API_KEY:-}
+      - LLM_VISION_ENDPOINT=${LLM_VISION_ENDPOINT:-}
+      - PROXY_URL=${PROXY_URL:-}
+      - PROXY_LIST=${PROXY_LIST:-}
+    volumes:
+      - ./prisma:/app/prisma
+      - ./data:/app/data
+    restart: unless-stopped

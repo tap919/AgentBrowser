@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Claw Protect — docker-compose.yml
+# Runs the full production stack locally (or on any Docker host)
+# ─────────────────────────────────────────────────────────────────────────────
+version: "3.9"
+
+services:
+  claw-protect:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: claw-protect
+    restart: unless-stopped
+    ports:
+      - "${CLAW_PORT:-3003}:3000"
+    environment:
+      NODE_ENV: production
+      CLAW_PORT: "3000"
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY}"
+      CLAW_STRIPE_WEBHOOK_SECRET: "${CLAW_STRIPE_WEBHOOK_SECRET}"
+      CLAW_SUCCESS_URL: "${CLAW_SUCCESS_URL:-https://clawprotect.dev/dashboard?success=true}"
+      CLAW_CANCEL_URL: "${CLAW_CANCEL_URL:-https://clawprotect.dev/pricing}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY}"
+      APP_URL: "${APP_URL:-https://clawprotect.dev}"
+    volumes:
+      # Persist API keys and usage logs across restarts
+      - claw-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.claw-protect.rule=Host(`api.clawprotect.dev`)"
+      - "traefik.http.routers.claw-protect.tls=true"
+      - "traefik.http.routers.claw-protect.tls.certresolver=letsencrypt"
+      - "traefik.http.services.claw-protect.loadbalancer.server.port=3000"
+
+volumes:
+  claw-data:
+    driver: local

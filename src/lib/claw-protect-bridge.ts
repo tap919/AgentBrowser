@@ -1,8 +1,6 @@
 // ClawProtectBridge - AgentBrowser Integration
 // Exposes Claw Protect UI components to AgentBrowser
 
-import { useUnifiedOrchestrator } from '../../BlackMind-main/src/integrations';
-
 // =============================================================================
 // COMPONENT MAPPING
 // =============================================================================
@@ -108,16 +106,7 @@ class ClawProtectBridge {
 
   private logAudit(entry: AuditEntry): void {
     this.auditLog.push(entry);
-    
-    // Also log to unified orchestrator
-    if (typeof useUnifiedOrchestrator !== 'undefined') {
-      try {
-        const orchestrator = useUnifiedOrchestrator();
-        orchestrator?.log?.('claw_protect_audit', entry);
-      } catch {
-        // Ignore errors
-      }
-    }
+    console.log('[ClawProtectBridge] Audit:', entry);
   }
 
   getAuditLog(): AuditEntry[] {

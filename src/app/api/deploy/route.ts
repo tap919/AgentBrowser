@@ -14,7 +14,7 @@ function extractToken(request: Request): string | null {
   const auth = request.headers.get('Authorization');
   if (!auth?.startsWith('Bearer ')) return null;
   const t = auth.slice(7).trim();
-  if (t.length < 10) return null;
+  if (t.length < 40) return null;
   return t;
 }
 

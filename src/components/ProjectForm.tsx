@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AppIcon } from '@/lib/icons';
 import AutomationEngineSelector from './AutomationEngineSelector';
 
@@ -141,15 +141,6 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
   });
   const [customRequirements, setCustomRequirements] = useState('');
 
-  // Update features when template changes
-  useEffect(() => {
-    if (TEMPLATE_FEATURES[template]) {
-      setFeatures(TEMPLATE_FEATURES[template].slice(0, 5)); // Default to first 5 features
-    } else {
-      setFeatures([]);
-    }
-  }, [template]);
-
   const toggleService = (service: string) => {
     setServices((prev) =>
       prev.includes(service) ? prev.filter((s) => s !== service) : [...prev, service]
@@ -208,6 +199,7 @@ export default function ProjectForm({ onSubmit, isAnalyzing }: ProjectFormProps)
                 type="button"
                 onClick={() => {
                   setTemplate(t.id);
+                  setFeatures((TEMPLATE_FEATURES[t.id] || []).slice(0, 5));
                   if (t.id === 'saas') {
                     setServices(['Authentication', 'Database', 'Payments', 'Email']);
                     setType('Web Application');

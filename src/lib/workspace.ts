@@ -3,7 +3,7 @@
 /* ═══════════════════════════════════════════
    WORKSPACE MODES
    ═══════════════════════════════════════════ */
-export type WorkspaceMode = 'build' | 'browse' | 'research' | 'scrape' | 'ventures' | 'security';
+export type WorkspaceMode = 'build' | 'browse' | 'research' | 'scrape' | 'security' | 'music-rights' | 'ventures';
 
 export interface WorkspaceModeConfig {
   id: WorkspaceMode;
@@ -11,15 +11,17 @@ export interface WorkspaceModeConfig {
   icon: string;
   description: string;
   color: string;
+  download?: boolean;
 }
 
 export const WORKSPACE_MODES: WorkspaceModeConfig[] = [
-  { id: 'build', label: 'Build', icon: 'hammer', description: 'Autonomous project builder', color: 'purple' },
-  { id: 'browse', label: 'Browse', icon: 'globe', description: 'AI-assisted web browsing', color: 'blue' },
-  { id: 'research', label: 'Research', icon: 'search', description: 'Multi-source deep research', color: 'cyan' },
-  { id: 'scrape', label: 'Scrape', icon: 'database', description: 'Structured data extraction', color: 'orange' },
-  { id: 'ventures', label: 'Ventures', icon: 'rocket', description: 'Sellable products & services', color: 'emerald' },
-  { id: 'security', label: 'Security', icon: 'shield', description: 'Security monitoring & settings', color: 'red' },
+  { id: 'build', label: 'Build', icon: 'hammer', description: 'Autonomous project builder', color: 'purple', download: true },
+  { id: 'browse', label: 'Browse', icon: 'globe', description: 'AI-assisted web browsing', color: 'blue', download: true },
+  { id: 'research', label: 'Research', icon: 'search', description: 'Multi-source deep research', color: 'cyan', download: true },
+  { id: 'scrape', label: 'Scrape', icon: 'database', description: 'Structured data extraction', color: 'orange', download: true },
+  { id: 'security', label: 'Security', icon: 'shield', description: 'Security monitoring & settings', color: 'red', download: true },
+  { id: 'music-rights', label: 'Music Rights', icon: 'music', description: 'Music rights migration portal', color: 'pink', download: false },
+  { id: 'ventures', label: 'Dashboard', icon: 'sparkles', description: 'NCSOUND business dashboard & automation', color: 'purple', download: false },
 ];
 
 /* ═══════════════════════════════════════════
@@ -127,7 +129,13 @@ export function saveBuildState(state: SavedBuildState): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(BUILD_STATE_KEY, JSON.stringify(state));
-  } catch { /* quota exceeded — silent fail */ }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+      console.warn('Build state save failed: storage quota exceeded');
+    } else {
+      console.warn('Build state save failed:', err);
+    }
+  }
 }
 
 export function loadBuildState(): SavedBuildState | null {

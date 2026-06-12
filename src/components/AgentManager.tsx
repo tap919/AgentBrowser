@@ -1,8 +1,8 @@
-import { type CustomAgent } from '../types/agent';
+import { type CustomAgent } from '@/features/agents/types';
 import { useState, useEffect } from 'react';
 import { Upload, Trash2, Bot, FileJson, FileCode } from 'lucide-react';
 import AgentUploadModal from './AgentUploadModal';
-import { getAgents, deleteAgent, toggleAgent, saveAgent } from '@/lib/agent-persistence';
+import { getAgents, deleteAgent, toggleAgent, saveAgent, updateAgentTier } from '@/lib/agent-persistence';
 
 export default function AgentManager() {
   const [agents, setAgents] = useState<CustomAgent[]>([]);
@@ -12,16 +12,30 @@ export default function AgentManager() {
     getAgents().then(setAgents).catch(console.error);
   }, []);
 
-  const handleUpload = async (agent: CustomAgent) => {
-    await saveAgent(agent);
-    setAgents((prev) => [...prev, agent]);
-    setIsModalOpen(false);
+  const handleUpload = async (newAgents: CustomAgent[]) => {
+    try {
+      for (const agent of newAgents) {
+        await saveAgent(agent);
+      }
+      setAgents((prev) => [...prev, ...newAgents]);
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to save agents:', err);
+    }
   };
 
   const handleToggle = async (id: string) => {
-    const agent = agents.find((a) => a.id === id);
-    if (agent) {
-      await toggleAgent(id, !agent.enabled);
+    setAgents((prev) => {
+      const agent = prev.find((a) => a.id === id);
+      if (!agent) return prev;
+      const newEnabled = !agent.enabled;
+      return prev.map((a) => (a.id === id ? { ...a, enabled: newEnabled } : a));
+    });
+    try {
+      const newEnabled = !agents.find((a) => a.id === id)?.enabled;
+      await toggleAgent(id, newEnabled);
+    } catch (err) {
+      console.error('Failed to toggle agent:', err);
       setAgents((prev) =>
         prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a))
       );
@@ -29,14 +43,28 @@ export default function AgentManager() {
   };
 
   const handleDelete = async (id: string) => {
-    await deleteAgent(id);
-    setAgents((prev) => prev.filter((a) => a.id !== id));
+    const prev = agents;
+    setAgents((a) => a.filter((x) => x.id !== id));
+    try {
+      await deleteAgent(id);
+    } catch (err) {
+      console.error('Failed to delete agent:', err);
+      setAgents(prev);
+    }
   };
 
-  const handleTierChange = (id: string, tier: 'full' | 'reduced' | 'custom') => {
+  const handleTierChange = async (id: string, tier: 'full' | 'reduced' | 'custom') => {
     setAgents((prev) =>
       prev.map((a) => (a.id === id ? { ...a, securityTier: tier } : a))
     );
+    try {
+      await updateAgentTier(id, tier);
+    } catch (err) {
+      console.error('Failed to update agent tier:', err);
+      setAgents((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, securityTier: a.securityTier } : a))
+      );
+    }
   };
 
   return (

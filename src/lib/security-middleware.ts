@@ -1,8 +1,23 @@
-import type { SecurityLevel, SecurityResult, SecurityEvent } from './security-types';
+import type { SecurityLevel, SecurityResult, SecurityEvent } from '@/features/security/types';
 import { checkPromptInjection, scanForSecrets } from './claw-protect-client';
 
 const CACHE_TTL = 300000;
+const MAX_CACHE_SIZE = 1000;
 const injectionCache = new Map<string, { result: boolean; warnings: string[]; timestamp: number }>();
+const cacheInsertionOrder: string[] = [];
+
+function evictOldestCacheEntries(): void {
+  while (injectionCache.size >= MAX_CACHE_SIZE && cacheInsertionOrder.length > 0) {
+    const key = cacheInsertionOrder.shift()!;
+    injectionCache.delete(key);
+  }
+}
+
+function cacheSet(key: string, value: { result: boolean; warnings: string[]; timestamp: number }): void {
+  injectionCache.set(key, value);
+  cacheInsertionOrder.push(key);
+  evictOldestCacheEntries();
+}
 
 const INJECTION_KEYWORDS = [
   'ignore',
@@ -74,7 +89,7 @@ export class SecurityMiddleware {
     } else {
       try {
         const injectionResult = await checkPromptInjection(scanText);
-        injectionCache.set(cacheKey, {
+        cacheSet(cacheKey, {
           result: injectionResult.detected,
           warnings: injectionResult.warnings || [],
           timestamp: Date.now(),
@@ -86,8 +101,8 @@ export class SecurityMiddleware {
             warnings.push(...injectionResult.warnings);
           }
         }
-      } catch {
-        // Fail open - continue with local checks
+      } catch (err) {
+        console.error('Claw Protect injection check failed:', err);
       }
     }
 
@@ -99,8 +114,8 @@ export class SecurityMiddleware {
           warnings.push(`Claw Protect: Secrets detected - ${secrets.join(', ')}`);
           riskLevel = riskLevel === 'high' ? 'high' : 'medium';
         }
-      } catch {
-        // Fail open - continue with local checks
+      } catch (err) {
+        console.error('Claw Protect secrets scan failed:', err);
       }
     }
 
@@ -132,10 +147,13 @@ export class SecurityMiddleware {
 
     let approved = true;
 
+    let requiresConfirmation = false;
+
     if (this.securityLevel === 'active' || this.securityLevel === 'configurable') {
       if (riskLevel === 'high') {
         approved = false;
-        blockedReasons.push('High risk action blocked by active security');
+        requiresConfirmation = true;
+        blockedReasons.push('High risk action requires user confirmation');
       }
     }
 
@@ -148,6 +166,7 @@ export class SecurityMiddleware {
       riskLevel,
       warnings,
       blockedReasons,
+      requiresConfirmation,
     };
 
     const event: SecurityEvent = {
@@ -162,8 +181,13 @@ export class SecurityMiddleware {
     return result;
   }
 
+  private readonly MAX_EVENTS = 500;
+
   logEvent(event: SecurityEvent): void {
     this.events.push(event);
+    if (this.events.length > this.MAX_EVENTS) {
+      this.events = this.events.slice(-Math.floor(this.MAX_EVENTS * 0.8));
+    }
   }
 
   getEvents(): SecurityEvent[] {
