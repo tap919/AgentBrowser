@@ -3,7 +3,7 @@
 /* ═══════════════════════════════════════════
    WORKSPACE MODES
    ═══════════════════════════════════════════ */
-export type WorkspaceMode = 'build' | 'browse' | 'research' | 'scrape' | 'security' | 'music-rights' | 'ventures';
+export type WorkspaceMode = 'build' | 'browse' | 'research' | 'scrape' | 'security' | 'music-rights' | 'ventures' | 'services';
 
 export interface WorkspaceModeConfig {
   id: WorkspaceMode;
@@ -22,6 +22,7 @@ export const WORKSPACE_MODES: WorkspaceModeConfig[] = [
   { id: 'security', label: 'Security', icon: 'shield', description: 'Security monitoring & settings', color: 'red', download: true },
   { id: 'music-rights', label: 'Music Rights', icon: 'music', description: 'Music rights migration portal', color: 'pink', download: false },
   { id: 'ventures', label: 'Dashboard', icon: 'sparkles', description: 'NCSOUND business dashboard & automation', color: 'purple', download: false },
+  { id: 'services', label: 'Services', icon: 'server', description: 'Service health & control dashboard', color: 'blue', download: false },
 ];
 
 /* ═══════════════════════════════════════════

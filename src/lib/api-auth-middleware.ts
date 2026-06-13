@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 
 // Load API key from environment variables
-const API_KEY = process.env.AGENT_API_KEY;
+const API_KEY = process.env.AGENT_API_KEY || '';
+
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    return false;
+  }
+}
 
 export function apiAuthMiddleware(handler: Function) {
   return async (request: Request, ...args: any[]) => {
@@ -16,9 +26,9 @@ export function apiAuthMiddleware(handler: Function) {
       return NextResponse.json({ error: 'Service Unavailable: API key not configured' }, { status: 503 });
     }
 
-    const providedKey = request.headers.get('X-Agent-Auth');
+    const providedKey = request.headers.get('X-Agent-Auth') || '';
 
-    if (!providedKey || providedKey !== API_KEY) {
+    if (!providedKey || !safeCompare(providedKey, API_KEY)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

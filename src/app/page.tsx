@@ -14,6 +14,7 @@ import { BrowseView, ResearchView, ScrapeView } from '@/components/ModeViews';
 import VenturesPanel from '@/components/VenturesPanel';
 import MusicRightsPanel from '@/components/MusicRightsPanel';
 import SecurityDashboard from '@/components/SecurityDashboard';
+import ServiceDashboard from '@/components/ServiceDashboard';
 import { BuildWorkspace } from '@/features/build/components/BuildWorkspace';
 import { getSettings, getEnabledIntegrations, saveSettings, type AppSettings, type AppMode } from '@/lib/settings';
 import { type WorkspaceMode } from '@/lib/workspace';
@@ -212,6 +213,11 @@ function AppContent() {
         {workspaceMode === 'music-rights' && (
           <ErrorBoundary fallback={<WorkspaceErrorFallback title="Music rights workspace error" />}>
             <MusicRightsPanel />
+          </ErrorBoundary>
+        )}
+        {workspaceMode === 'services' && (
+          <ErrorBoundary fallback={<WorkspaceErrorFallback title="Service dashboard error" />}>
+            <ServiceDashboard />
           </ErrorBoundary>
         )}
       </main>

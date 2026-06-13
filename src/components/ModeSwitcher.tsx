@@ -20,6 +20,7 @@ const modeColors: Record<WorkspaceMode, { active: string; ring: string; dot: str
   security: { active: 'bg-red-500/15 text-red-400 border-red-500/30', ring: 'ring-red-500/20', dot: 'bg-red-400' },
   'music-rights': { active: 'bg-pink-500/15 text-pink-400 border-pink-500/30', ring: 'ring-pink-500/20', dot: 'bg-pink-400' },
   ventures: { active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', ring: 'ring-emerald-500/20', dot: 'bg-emerald-400' },
+  services: { active: 'bg-blue-500/15 text-blue-400 border-blue-500/30', ring: 'ring-blue-500/20', dot: 'bg-blue-400' },
 };
 
 export default function ModeSwitcher({ mode, onChange, buildRunning, onDownload }: ModeSwitcherProps) {
