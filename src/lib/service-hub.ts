@@ -321,3 +321,23 @@ export async function preBuildAudit(projectName: string, projectPath: string): P
 
   return { rank: result, plan };
 }
+
+export async function searchBooks(query: string, category?: string, limit?: number): Promise<unknown> {
+  try {
+    const { searchBooks: search } = await import('@/lib/books');
+    return search(query, { category, limit });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Book search failed';
+    return { error: msg };
+  }
+}
+
+export async function getBookCatalog(): Promise<unknown> {
+  try {
+    const { getCatalog } = await import('@/lib/books');
+    return getCatalog();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to read catalog';
+    return { error: msg };
+  }
+}

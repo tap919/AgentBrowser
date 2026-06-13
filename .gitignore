@@ -83,5 +83,8 @@ start-sidecar.sh
 # Planning docs
 /plans/
 
+# Extracted book text cache
+data/books/.text/
+
 # Scripts
 /scripts/

@@ -23,7 +23,8 @@ export type WorkflowStepType =
   | 'pro-revenue'
   | 'content-deploy'
   | 'upgrade-scan'
-  | 'run-pipeline';
+  | 'run-pipeline'
+  | 'knowledge-search';
 
 export interface WorkflowStep {
   id: string;
@@ -259,6 +260,15 @@ async function executeStep(
         case 'run-pipeline': {
           const { runPipeline } = await import('@/lib/agent-orchestrator');
           output = await runPipeline(step.config.pipelineId as string);
+          break;
+        }
+
+        case 'knowledge-search': {
+          const { searchBooks } = await import('@/lib/books');
+          const query = step.config.query as string;
+          const category = step.config.category as string | undefined;
+          const limit = step.config.limit as number | undefined;
+          output = await searchBooks(query, { category, limit });
           break;
         }
 
