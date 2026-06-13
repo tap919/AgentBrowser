@@ -1,0 +1,535 @@
+import { agentEventBus, type EventType } from '@/lib/agent-event-bus';
+import { writeMemory, readMemory, searchMemory } from '@/lib/agent-memory';
+
+// ─── Types ───
+
+export type WorkflowStepType =
+  | 'browser-reader'
+  | 'browser-extract'
+  | 'browser-scrape'
+  | 'business-skill'
+  | 'daily-routine'
+  | 'weekly-routine'
+  | 'reporank-audit'
+  | 'mutly-pipeline'
+  | 'vibeserve-tool'
+  | 'generate-site'
+  | 'memory-write'
+  | 'memory-read'
+  | 'webhook'
+  | 'delay'
+  | 'conditional-gate'
+  | 'competitor-signal'
+  | 'pro-revenue'
+  | 'content-deploy'
+  | 'upgrade-scan'
+  | 'run-pipeline';
+
+export interface WorkflowStep {
+  id: string;
+  type: WorkflowStepType;
+  label: string;
+  config: Record<string, unknown>;
+  dependsOn?: string[];
+  onSuccess?: string;
+  onFailure?: string;
+  retries?: number;
+}
+
+export interface WorkflowDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: 'monitoring' | 'business' | 'development' | 'security' | 'content' | 'research';
+  tags: string[];
+  schedule?: string | null;
+  steps: WorkflowStep[];
+  timeout?: number;
+}
+
+export interface WorkflowRun {
+  id: string;
+  workflowId: string;
+  startedAt: string;
+  completedAt?: string;
+  status: 'pending' | 'running' | 'completed' | 'completed_with_errors' | 'failed' | 'aborted';
+  stepResults: Record<string, WorkflowStepResult>;
+  error?: string;
+}
+
+export interface WorkflowStepResult {
+  stepId: string;
+  status: 'pending' | 'running' | 'success' | 'failed' | 'skipped';
+  output: unknown;
+  error?: string;
+  durationMs: number;
+  attempts: number;
+}
+
+// ─── Registry ───
+
+const registry = new Map<string, WorkflowDefinition>();
+
+export function registerWorkflow(wf: WorkflowDefinition): void {
+  registry.set(wf.id, wf);
+}
+
+export function getWorkflow(id: string): WorkflowDefinition | undefined {
+  return registry.get(id);
+}
+
+export function listWorkflows(category?: string): WorkflowDefinition[] {
+  const all = Array.from(registry.values());
+  if (category) return all.filter(w => w.category === category);
+  return all;
+}
+
+export function listCategories(): string[] {
+  return [...new Set(Array.from(registry.values()).map(w => w.category))];
+}
+
+// ─── Runner ───
+
+const activeRuns = new Map<string, WorkflowRun>();
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function executeStep(
+  step: WorkflowStep,
+  stepResults: Record<string, WorkflowStepResult>,
+): Promise<WorkflowStepResult> {
+  const start = Date.now();
+  let attempts = 0;
+  const maxRetries = step.retries ?? 0;
+
+  const tryExecute = async (): Promise<WorkflowStepResult> => {
+    attempts++;
+    try {
+      let output: unknown;
+
+      switch (step.type) {
+        case 'browser-reader': {
+          const { executeBrowserTask, createBrowserTask } = await import('@/lib/browser-pipeline');
+          const result = await executeBrowserTask(createBrowserTask('reader', step.config.url as string));
+          output = result;
+          break;
+        }
+
+        case 'browser-extract': {
+          const { executeBrowserTask, createBrowserTask } = await import('@/lib/browser-pipeline');
+          const result = await executeBrowserTask(createBrowserTask(
+            'extract', step.config.url as string, step.config.selectors as string[] | undefined,
+          ));
+          output = result;
+          break;
+        }
+
+        case 'business-skill': {
+          const { executeBusinessSkill } = await import('@/lib/business/bridge');
+          const result = await executeBusinessSkill({
+            skill: step.config.skill as never,
+            action: step.config.action as string,
+            params: (step.config.params || {}) as Record<string, unknown>,
+          });
+          output = result;
+          break;
+        }
+
+        case 'daily-routine': {
+          const { runDailyBusinessRoutine } = await import('@/lib/business/bridge');
+          output = await runDailyBusinessRoutine();
+          break;
+        }
+
+        case 'weekly-routine': {
+          const { runWeeklyBusinessRoutine } = await import('@/lib/business/bridge');
+          output = await runWeeklyBusinessRoutine();
+          break;
+        }
+
+        case 'reporank-audit': {
+          const { preBuildAudit } = await import('@/lib/service-hub');
+          output = await preBuildAudit(
+            step.config.projectName as string,
+            step.config.projectPath as string,
+          );
+          break;
+        }
+
+        case 'mutly-pipeline': {
+          const { runMutlyPipeline } = await import('@/lib/service-hub');
+          output = await runMutlyPipeline(step.config.projectDir as string);
+          break;
+        }
+
+        case 'vibeserve-tool': {
+          const { executeVibeServeTool } = await import('@/lib/service-hub');
+          output = await executeVibeServeTool(
+            step.config.tool as string,
+            step.config.params as Record<string, unknown> || {},
+          );
+          break;
+        }
+
+        case 'generate-site': {
+          const { generateSite } = await import('@/lib/generate-site');
+          output = generateSite({
+            name: step.config.name as string,
+            description: step.config.description as string,
+            type: step.config.type as string,
+            audience: step.config.audience as string,
+          });
+          break;
+        }
+
+        case 'memory-write': {
+          await writeMemory({
+            namespace: step.config.namespace as string || 'workflows',
+            key: step.config.key as string,
+            value: step.config.value,
+            agentId: step.config.agentId as string || 'workflow-engine',
+            ttl: step.config.ttl as number | undefined,
+          });
+          output = { written: true };
+          break;
+        }
+
+        case 'memory-read': {
+          output = await readMemory(
+            step.config.key as string,
+            step.config.namespace as string,
+          );
+          break;
+        }
+
+        case 'delay': {
+          await sleep(step.config.ms as number || 1000);
+          output = { delayed: true };
+          break;
+        }
+
+        case 'competitor-signal': {
+          const { recordCompetitiveSignal } = await import('@/lib/economic-engine');
+          recordCompetitiveSignal({
+            competitor: step.config.competitor as string,
+            signal: step.config.signal as string,
+            severity: (step.config.severity as 'info' | 'warning' | 'critical') || 'info',
+            source: step.config.source as string || 'workflow',
+            detectedAt: new Date().toISOString(),
+          });
+          output = { recorded: true };
+          break;
+        }
+
+        case 'pro-revenue': {
+          const { recordProRevenue } = await import('@/lib/economic-engine');
+          recordProRevenue({
+            date: step.config.date as string || new Date().toISOString(),
+            pro: step.config.pro as 'ASCAP' | 'MLC' | 'HFA',
+            workTitle: step.config.workTitle as string,
+            amount: step.config.amount as number,
+            type: step.config.type as 'mechanical' | 'performance' | 'sync',
+            period: step.config.period as string,
+          });
+          output = { recorded: true };
+          break;
+        }
+
+        case 'content-deploy': {
+          const { triggerContentDeploy } = await import('@/lib/economic-engine');
+          await triggerContentDeploy({
+            topic: step.config.topic as string,
+            siteName: step.config.siteName as string,
+            description: step.config.description as string,
+            status: 'planned',
+          });
+          output = { triggered: true };
+          break;
+        }
+
+        case 'upgrade-scan': {
+          const { processUpgradeQueue } = await import('@/lib/upgrade-executor');
+          await processUpgradeQueue();
+          output = { processed: true };
+          break;
+        }
+
+        case 'run-pipeline': {
+          const { runPipeline } = await import('@/lib/agent-orchestrator');
+          output = await runPipeline(step.config.pipelineId as string);
+          break;
+        }
+
+        case 'webhook': {
+          const res = await fetch(step.config.url as string, {
+            method: (step.config.method as string) || 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(step.config.body || {}),
+            signal: AbortSignal.timeout(10000),
+          });
+          output = { status: res.status, ok: res.ok };
+          break;
+        }
+
+        case 'conditional-gate': {
+          const condition = step.config.condition as string;
+          const context = stepResults;
+          // Simple expression evaluator — checks if a previous step succeeded
+          const gates = step.config.gates as string[] || [];
+          const allPassed = gates.every(g => {
+            const stepResult = context[g];
+            return stepResult?.status === 'success';
+          });
+          output = { passed: allPassed, condition, gates };
+          break;
+        }
+
+        default:
+          throw new Error(`Unknown step type: ${step.type}`);
+      }
+
+      return {
+        stepId: step.id,
+        status: 'success',
+        output,
+        durationMs: Date.now() - start,
+        attempts,
+      };
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : 'Unknown error';
+      if (attempts <= maxRetries) {
+        await sleep(1000 * attempts);
+        return tryExecute();
+      }
+      return {
+        stepId: step.id,
+        status: 'failed',
+        output: null,
+        error,
+        durationMs: Date.now() - start,
+        attempts,
+      };
+    }
+  };
+
+  return tryExecute();
+}
+
+function topologicalSort(steps: WorkflowStep[]): WorkflowStep[] {
+  const visited = new Set<string>();
+  const sorted: WorkflowStep[] = [];
+  const stepMap = new Map(steps.map(s => [s.id, s]));
+
+  function visit(id: string, path: Set<string>): void {
+    if (path.has(id)) throw new Error(`Circular dependency: ${id}`);
+    if (visited.has(id)) return;
+    path.add(id);
+    const step = stepMap.get(id);
+    if (!step) throw new Error(`Step not found: ${id}`);
+    for (const dep of step.dependsOn || []) visit(dep, path);
+    path.delete(id);
+    visited.add(id);
+    sorted.push(step);
+  }
+
+  for (const step of steps) {
+    if (!visited.has(step.id)) visit(step.id, new Set());
+  }
+
+  return sorted;
+}
+
+export async function runWorkflow(
+  workflowId: string,
+  onStep?: (stepId: string, result: WorkflowStepResult) => void,
+): Promise<WorkflowRun> {
+  const wf = registry.get(workflowId);
+  if (!wf) throw new Error(`Workflow not found: ${workflowId}`);
+
+  const run: WorkflowRun = {
+    id: crypto.randomUUID(),
+    workflowId,
+    startedAt: new Date().toISOString(),
+    status: 'running',
+    stepResults: {},
+  };
+
+  activeRuns.set(run.id, run);
+
+  const sorted = topologicalSort(wf.steps);
+
+  agentEventBus.emit('artifact', `workflow:${wf.id}`, {
+    type: 'workflow-started',
+    runId: run.id,
+    workflowId: wf.id,
+    workflowName: wf.name,
+  }, true);
+
+  try {
+    for (const step of sorted) {
+      run.stepResults[step.id] = { stepId: step.id, status: 'running', output: null, durationMs: 0, attempts: 0 };
+      const result = await executeStep(step, run.stepResults);
+      run.stepResults[step.id] = result;
+      onStep?.(step.id, result);
+
+      // Store each successful step output in memory for downstream
+      if (result.status === 'success') {
+        try {
+          await writeMemory({
+            namespace: `workflow:${wf.id}`,
+            key: `${run.id}:${step.id}`,
+            value: { workflowId: wf.id, stepId: step.id, output: result.output },
+            agentId: 'workflow-engine',
+            ttl: 86400,
+          });
+        } catch { /* non-critical */ }
+      }
+
+      // If the step failed and has a failure path, mark it as skipped
+      if (step.onFailure && result.status === 'failed') {
+        const skipStep = wf.steps.find(s => s.id === step.onFailure);
+        if (skipStep) {
+          run.stepResults[skipStep.id] = {
+            stepId: skipStep.id, status: 'skipped', output: null, durationMs: 0, attempts: 0,
+          };
+        }
+      }
+    }
+
+    const failed = Object.values(run.stepResults).filter(r => r.status === 'failed');
+    run.status = failed.length === 0 ? 'completed' : 'completed_with_errors';
+    if (failed.length > 0) run.error = `${failed.length} step(s) failed`;
+
+    agentEventBus.emit('artifact', `workflow:${wf.id}`, {
+      type: 'workflow-completed',
+      runId: run.id,
+      workflowId: wf.id,
+      status: run.status,
+      stepCount: sorted.length,
+      failedCount: failed.length,
+    }, true);
+  } catch (err: unknown) {
+    run.status = 'failed';
+    run.error = err instanceof Error ? err.message : 'Workflow execution failed';
+  }
+
+  run.completedAt = new Date().toISOString();
+
+  // Store run result in memory
+  try {
+    await writeMemory({
+      namespace: 'workflow-runs',
+      key: `${wf.id}:${run.id}`,
+      value: { workflowId: wf.id, runId: run.id, status: run.status, startedAt: run.startedAt, completedAt: run.completedAt },
+      agentId: 'workflow-engine',
+      ttl: 604800,
+    });
+  } catch { /* non-critical */ }
+
+  return run;
+}
+
+export function getWorkflowRun(runId: string): WorkflowRun | undefined {
+  return activeRuns.get(runId);
+}
+
+export function listActiveRuns(): WorkflowRun[] {
+  return Array.from(activeRuns.values());
+}
+
+// ─── Built-in Workflow Templates ───
+
+const COMPETITIVE_MONITOR: WorkflowDefinition = {
+  id: 'competitive-monitor',
+  name: 'Competitive Monitor',
+  description: 'Browse a competitor URL, extract content, analyze for signals, store findings, and alert if critical changes detected.',
+  category: 'monitoring',
+  tags: ['competitive', 'browser', 'scraping', 'alerts'],
+  schedule: '0 */6 * * *',
+  steps: [
+    { id: 'browse', type: 'browser-reader', label: 'Browse competitor page', config: { url: '' }, dependsOn: [] },
+    { id: 'extract', type: 'browser-extract', label: 'Extract key content', config: { url: '', selectors: ['h1', 'h2', '.price', '.product'] }, dependsOn: ['browse'] },
+    { id: 'signal-check', type: 'competitor-signal', label: 'Check for competitive signals', config: { competitor: '', severity: 'info', source: 'workflow' }, dependsOn: ['extract'] },
+    { id: 'store', type: 'memory-write', label: 'Store results in memory', config: { namespace: 'competitive-scans', key: '', value: {}, ttl: 604800 }, dependsOn: ['extract'] },
+  ],
+};
+
+const DAILY_BUSINESS_ROUTINE: WorkflowDefinition = {
+  id: 'daily-business-routine',
+  name: 'Daily Business Ops',
+  description: 'Run the full daily business routine — check budgets, track revenue, generate content, check music analytics, and store results.',
+  category: 'business',
+  tags: ['daily', 'finance', 'content', 'music'],
+  schedule: '0 7 * * 1-5',
+  steps: [
+    { id: 'routine', type: 'daily-routine', label: 'Execute daily business routine', config: {}, dependsOn: [] },
+    { id: 'store-results', type: 'memory-write', label: 'Store routine results', config: { namespace: 'business-routines', key: '', value: {}, ttl: 86400 }, dependsOn: ['routine'] },
+  ],
+};
+
+const PROJECT_HEALTH_SCAN: WorkflowDefinition = {
+  id: 'project-health-scan',
+  name: 'Project Health Scan',
+  description: 'Run RepoRank audit on a project, analyze quality, generate tasks, and store results for the build pipeline.',
+  category: 'development',
+  tags: ['audit', 'quality', 'reporank', 'build'],
+  schedule: null,
+  steps: [
+    { id: 'audit', type: 'reporank-audit', label: 'Run RepoRank audit', config: { projectName: '', projectPath: '' }, dependsOn: [] },
+    { id: 'mutly', type: 'mutly-pipeline', label: 'Trigger Mutly pipeline if score >= 50', config: { projectDir: '' }, dependsOn: ['audit'] },
+    { id: 'store', type: 'memory-write', label: 'Store audit results', config: { namespace: 'prebuild-audits', key: '', value: {}, ttl: 86400 }, dependsOn: ['audit'] },
+  ],
+};
+
+const CONTENT_FACTORY: WorkflowDefinition = {
+  id: 'content-factory',
+  name: 'Content Factory',
+  description: 'Research a topic via browser, extract key findings, generate a site, trigger content deploy workflow, and store the result.',
+  category: 'content',
+  tags: ['content', 'research', 'generate', 'deploy'],
+  schedule: '0 9 * * 3',
+  steps: [
+    { id: 'research', type: 'browser-reader', label: 'Research topic', config: { url: '' }, dependsOn: [] },
+    { id: 'generate', type: 'generate-site', label: 'Generate site from research', config: { name: '', description: '' }, dependsOn: ['research'] },
+    { id: 'deploy', type: 'content-deploy', label: 'Trigger content deployment', config: { topic: '', siteName: '', description: '' }, dependsOn: ['generate'] },
+    { id: 'store', type: 'memory-write', label: 'Store content artifact', config: { namespace: 'content-factory', key: '', value: {}, ttl: 2592000 }, dependsOn: ['generate'] },
+  ],
+};
+
+const SELF_UPGRADE: WorkflowDefinition = {
+  id: 'self-upgrade',
+  name: 'Self-Upgrade Scanner',
+  description: 'Scan trending repos via GitHub, research top recommendations, store findings in memory for the build pipeline.',
+  category: 'development',
+  tags: ['upgrade', 'trending', 'research', 'automation'],
+  schedule: '0 6 * * 0',
+  steps: [
+    { id: 'scan', type: 'upgrade-scan', label: 'Process upgrade queue', config: {}, dependsOn: [] },
+    { id: 'store', type: 'memory-write', label: 'Store scan results', config: { namespace: 'upgrades', key: '', value: {}, ttl: 604800 }, dependsOn: ['scan'] },
+  ],
+};
+
+const MUSIC_REVENUE_TRACKER: WorkflowDefinition = {
+  id: 'music-revenue-tracker',
+  name: 'PRO Revenue Tracker',
+  description: 'Track music revenue across ASCAP, MLC, and HFA. Store in economic engine for financial reporting.',
+  category: 'business',
+  tags: ['music', 'revenue', 'pro', 'finance'],
+  schedule: '0 0 1 * *',
+  steps: [
+    { id: 'revenue', type: 'pro-revenue', label: 'Record PRO revenue', config: { pro: 'ASCAP', amount: 0, type: 'performance', period: '' }, dependsOn: [] },
+    { id: 'store', type: 'memory-write', label: 'Store revenue data', config: { namespace: 'pro-revenue', key: '', value: {}, ttl: 7776000 }, dependsOn: ['revenue'] },
+  ],
+};
+
+// Register all built-in workflows
+export function registerBuiltInWorkflows(): void {
+  registerWorkflow(COMPETITIVE_MONITOR);
+  registerWorkflow(DAILY_BUSINESS_ROUTINE);
+  registerWorkflow(PROJECT_HEALTH_SCAN);
+  registerWorkflow(CONTENT_FACTORY);
+  registerWorkflow(SELF_UPGRADE);
+  registerWorkflow(MUSIC_REVENUE_TRACKER);
+}

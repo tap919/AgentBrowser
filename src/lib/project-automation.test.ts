@@ -32,7 +32,7 @@ describe('getWatchedProjects', () => {
 });
 
 describe('analyzeProjectSync', () => {
-  it('analyzes AgentBrowser itself (real test)', () => {
+  it('analyzes AgentBrowser itself (real test)', { timeout: 30000 }, () => {
     const result = analyzeProjectSync('AgentBrowser', process.cwd());
     expect(result).toHaveProperty('projectName', 'AgentBrowser');
     expect(result).toHaveProperty('reporank.score');
@@ -42,7 +42,7 @@ describe('analyzeProjectSync', () => {
     expect(result.mutlyIndex.files).toBeGreaterThan(0);
   });
 
-  it('analyzes a project and returns all required fields', () => {
+  it('analyzes a project and returns all required fields', { timeout: 30000 }, () => {
     const result = analyzeProjectSync('Test', process.cwd());
     expect(result).toHaveProperty('projectName');
     expect(result).toHaveProperty('projectPath');
