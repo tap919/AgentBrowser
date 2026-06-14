@@ -1,0 +1,7 @@
+{
+  "baseUrl": "http://localhost:3100",
+  "apiKey": "set-your-z-ai-api-key-here",
+  "chatId": "",
+  "userId": "",
+  "token": ""
+}
