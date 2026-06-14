@@ -22,14 +22,14 @@ Complete AgentBrowser by downloading books from Google Drive and producing knowl
 - **Knowledge map** created at `docs/KNOWLEDGE-MAP.md`
 - **Book indexing** run — 29 books extracted to `data/books/.text/` for fast search
 
-### Books Downloaded (30 files)
-**Computers (14)**: python-crash-course-2nd-ed, automate-the-boring-stuff-2nd-ed, serious-python, real-world-python, object-oriented-python, beyond-basic-stuff-python, impractical-python-projects, practical-deep-learning-python-intro, dive-into-algorithms-python, learn-to-code-by-solving-problems, big-book-data-science-2025, think-distributed-systems-2025, logic-for-programmers-2025, artificial-intelligence-insights-hbr
+### Books Downloaded (47 indexed + 17 unindexed = 64 total files)
+**Computers (27)**: python-crash-course-2nd-ed, automate-the-boring-stuff-2nd-ed, serious-python, real-world-python, object-oriented-python, beyond-basic-stuff-python, impractical-python-projects, practical-deep-learning-python-intro, dive-into-algorithms-python, learn-to-code-by-solving-problems, big-book-data-science-2025, think-distributed-systems-2025, logic-for-programmers-2025, artificial-intelligence-insights-hbr, designing-data-intensive-applications, data-structure-in-python-2024, chat-gpt-bible-10-books-1, the-complete-developer-ts-react-nextjs, coding-with-ai-for-dummies, encyclopedia-data-warehousing, software-engineering-at-google, quantum-computing-essential-math-2023, chatgpt-decoded, ceh-study-guide-2025, javascript-for-sound-artists, quantum-computing-deeper-understanding-2025, thinking-programs-logic-2026, complete-python-coding-manual-2024, building-data-science-apps-fastapi, big-book-data-science-part1-2025
+
+**Business (9)**: how-to-win-friends, thinking-fast-and-slow, limitless-jim-kwik, business-intelligence-and-data-analysis-ai-2025, python-for-business-analytics-2025, diary-of-a-ceo, business-analytics-for-managers-2017, data-analysis-business-decisions-2025, modern-business-data-analyst-2024
 
 **Math (7)**: essential-math-for-ai-2023, essential-math-for-data-science, math-for-digital-science-2025, calculus-with-applications-to-economics-2025, mathematical-physics-and-matrix-representations-2025, programming-logic-and-design-2024, risk-and-predictive-analytics-business-r-2025
 
 **financial (6)**: 48-laws-of-power, 50-business-classics, art-of-statistics, how-to-day-trade, quantum-computing-essential-math-2023, risk-predictive-analytics-business-r-2025
-
-**Business (3)**: how-to-win-friends, thinking-fast-and-slow, limitless-jim-kwik
 
 ### Known Issues
 - ZAI SDK: requires `.z-ai-config` file in project root — feature unblocked once created
