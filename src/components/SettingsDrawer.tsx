@@ -112,7 +112,7 @@ interface SettingsDrawerProps {
 export default function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const [tab, setTab] = useState<Tab>('general');
   const [settings, setSettings] = useState<AppSettings>(getSettings);
-  const [creds, setCreds] = useState<Credentials>(getCredentials);
+  const [creds, setCreds] = useState<Credentials>({ githubToken: '', vercelToken: '', supabaseUrl: '', supabaseKey: '' });
   const [ghStatus, setGhStatus] = useState<'idle' | 'testing' | 'valid' | 'invalid'>('idle');
   const [ghUser, setGhUser] = useState('');
   const [dirty, setDirty] = useState(false);
@@ -121,9 +121,9 @@ export default function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
 
   useEffect(() => {
     if (open) {
-      hydrateTimerRef.current = setTimeout(() => {
+      hydrateTimerRef.current = setTimeout(async () => {
         setSettings(getSettings());
-        setCreds(getCredentials());
+        setCreds(await getCredentials());
         setGhStatus('idle');
         setGhUser('');
         setDirty(false);
@@ -432,6 +432,16 @@ export default function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                   <p className="text-xs font-semibold">Qwen</p>
                   <p className="text-[10px] text-muted-foreground mt-1">Alibaba Code CLI</p>
                 </button>
+                <button type="button"
+                  onClick={() => update('modelProvider', 'deepseek')}
+                  className={`p-3 rounded-xl border text-left transition-all hover:scale-[1.02] ${
+                    settings.modelProvider === 'deepseek'
+                      ? 'border-primary/50 bg-primary/10'
+                      : 'border-border/30 bg-background/20 hover:border-primary/30'
+                  }`}>
+                  <p className="text-xs font-semibold">DeepSeek</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">DeepSeek Chat API</p>
+                </button>
               </div>
 
               {/* OpenRouter config */}
@@ -497,6 +507,31 @@ export default function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                       <option value="qwen-coder-turbo">Qwen Coder Turbo</option>
                       <option value="qwen-plus">Qwen Plus</option>
                       <option value="qwen-turbo">Qwen Turbo</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {settings.modelProvider === 'deepseek' && (
+                <div className="space-y-4 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                  <SectionHeader icon={Sparkles} title="DeepSeek Configuration" />
+                  <MaskedInput
+                    label="API Key"
+                    value={settings.deepSeek.apiKey}
+                    onChange={v => updateNested('deepSeek', { apiKey: v })}
+                    placeholder="sk-..."
+                    helpText="Get your key from platform.deepseek.com/api_keys"
+                  />
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Model</label>
+                    <select
+                      value={settings.deepSeek.modelName}
+                      onChange={e => updateNested('deepSeek', { modelName: e.target.value })}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-border/30 bg-background/40 focus:outline-none focus:border-primary/40"
+                    >
+                      <option value="deepseek-chat">DeepSeek Chat</option>
+                      <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                      <option value="deepseek-coder">DeepSeek Coder</option>
                     </select>
                   </div>
                 </div>

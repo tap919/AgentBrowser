@@ -1,11 +1,23 @@
 import { NextResponse } from 'next/server';
 import { spawnSync } from 'child_process';
+import { bigHomie } from '@/lib/big-homie-client';
+import { checkPromptInjection } from '@/lib/claw-protect-client';
+import { apiAuthMiddleware } from '@/lib/api-auth-middleware';
 
 interface ChatRequest {
   message: string;
   mode?: 'browse' | 'research' | 'scrape';
   sessionId?: string;
 }
+
+export const GET = apiAuthMiddleware(async function GET() {
+  const isHealthy = await bigHomie.checkHealth();
+  return NextResponse.json({
+    status: bigHomie.status,
+    connected: bigHomie.status === 'connected',
+    healthy: isHealthy,
+  });
+});
 
 const QWEN_BIN = 'qwen';
 
@@ -20,7 +32,7 @@ function buildSystemPrompt(mode: string): string {
   return `${context}\n\nYou are integrated as the command center for AgentBrowser. Big Homie is your agent persona. Be concise, actionable, and transparent about tool usage.`;
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   let body: ChatRequest;
   try {
     body = await request.json() as ChatRequest;
@@ -32,6 +44,15 @@ export async function POST(request: Request) {
 
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return NextResponse.json({ error: 'message is required' }, { status: 400 });
+  }
+
+  // Claw Protect injection scan before forwarding to Big Homie
+  const scan = await checkPromptInjection(message);
+  if (scan.detected) {
+    return NextResponse.json({
+      error: 'Message blocked by security scan',
+      warnings: scan.warnings,
+    }, { status: 403 });
   }
 
   const systemPrompt = buildSystemPrompt(mode);
@@ -91,3 +112,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = apiAuthMiddleware(postHandler);

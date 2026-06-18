@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { agentScheduler } from '@/lib/agent-scheduler';
+import { apiAuthMiddleware } from '@/lib/api-auth-middleware';
 import {
   autoConfigureAutonomousMode,
   getAutonomousSettings,
@@ -16,7 +17,7 @@ interface UpdateBody {
   autoConfigure?: boolean;
 }
 
-export async function GET() {
+async function getHandler() {
   await agentScheduler.initialize();
   return NextResponse.json({
     agents: agentScheduler.getAgents(),
@@ -26,7 +27,7 @@ export async function GET() {
   });
 }
 
-export async function PUT(request: Request) {
+async function putHandler(request: Request) {
   let body: UpdateBody;
   try {
     body = await request.json() as UpdateBody;
@@ -73,3 +74,6 @@ export async function PUT(request: Request) {
     );
   }
 }
+
+export const GET = apiAuthMiddleware(getHandler);
+export const PUT = apiAuthMiddleware(putHandler);

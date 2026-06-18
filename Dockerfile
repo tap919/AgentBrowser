@@ -27,6 +27,8 @@ ENV PORT=3000
 
 RUN apk add --no-cache openssl chromium
 
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -35,5 +37,7 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 3000
+
+USER appuser
 
 CMD ["node", "server.js"]

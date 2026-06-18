@@ -3,11 +3,12 @@ Browser Control Skill
 Headless browser automation using Playwright for web scraping, testing, and automation
 """
 import asyncio
-from typing import Dict, List, Optional, Any
+import ipaddress
+from urllib.parse import urlparse
+from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass
 from playwright.async_api import async_playwright, Browser, Page, BrowserContext
 from loguru import logger
-from pathlib import Path
 
 @dataclass
 class BrowserTask:
@@ -58,6 +59,24 @@ class BrowserSkill:
         """Context manager exit - close browser"""
         await self.close()
 
+    @staticmethod
+    def _validate_url_safe(url: str) -> bool:
+        """url_validate: Block SSRF by rejecting private/internal IP ranges."""
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        try:
+            host = parsed.hostname
+            if host in ("localhost", "127.0.0.1", "0.0.0.0", "255.255.255.255", "::1"):
+                return False
+            # Check if hostname is an IP in private ranges
+            ip = ipaddress.ip_address(host)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast:
+                return False
+        except ValueError:
+            pass  # hostname is a domain name, allowed
+        return True
+
     async def start(self, headless: bool = True):
         """Start browser instance"""
         if not self.playwright:
@@ -99,6 +118,8 @@ class BrowserSkill:
             BrowserResult with page info
         """
         try:
+            if not self._validate_url_safe(url):
+                return BrowserResult(success=False, url=url, title="", error="SSRF check failed: URL targets private or internal network")
             if not self.page:
                 await self.start()
 

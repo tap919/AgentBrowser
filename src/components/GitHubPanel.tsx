@@ -425,8 +425,8 @@ export default function GitHubPanel() {
   const selectingRepoRef = useRef(0); // incremented on each selectRepo call
 
   /* Load credentials from localStorage + listen for updates */
-  const loadCreds = useCallback(() => {
-    const creds = getCredentials();
+  const loadCreds = useCallback(async () => {
+    const creds = await getCredentials();
     const newToken = creds.githubToken;
     if (newToken !== tokenRef.current) {
       tokenRef.current = newToken;

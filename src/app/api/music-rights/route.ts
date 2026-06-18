@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { apiAuthMiddleware } from '@/lib/api-auth-middleware';
 
 // Next.js hot-reload safe global session map
 const globalForSessions = global as unknown as {
@@ -18,7 +19,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // GET handler to retrieve cached/local files
-export async function GET(req: Request) {
+async function getHandler(req: Request) {
   const { searchParams } = new URL(req.url);
   const cached = searchParams.get('cached');
 
@@ -33,8 +34,8 @@ export async function GET(req: Request) {
       const merged = fs.existsSync(mergedPath) ? JSON.parse(fs.readFileSync(mergedPath, 'utf8')) : [];
 
       return NextResponse.json({ ascap, mlc, merged });
-    } catch (err: any) {
-      return NextResponse.json({ error: `Failed to load cached data: ${err.message}` }, { status: 500 });
+    } catch (err: unknown) {
+      return NextResponse.json({ error: `Failed to load cached data: ${err instanceof Error ? err.message : 'Unknown error'}` }, { status: 500 });
     }
   }
 
@@ -84,9 +85,9 @@ function runAutomationScript(
               const code = await onMfaRequired(sessionId);
               onLog(`Relaying verification code to subprocess stdin...`);
               proc.stdin.write(code + '\n');
-            } catch (err: any) {
+            } catch (err: unknown) {
               proc.kill();
-              reject(new Error(`MFA relay failed: ${err.message}`));
+              reject(new Error(`MFA relay failed: ${err instanceof Error ? err.message : 'Unknown error'}`));
             }
           } else {
             proc.kill();
@@ -133,7 +134,7 @@ function runAutomationScript(
 }
 
 // POST handler for SSE streaming
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   let body: Record<string, unknown>;
   try {
     body = await req.json() as Record<string, unknown>;
@@ -349,3 +350,6 @@ function mergeCatalogs(ascap: Record<string, unknown>[], mlc: Record<string, unk
 
   return merged;
 }
+
+export const GET = apiAuthMiddleware(getHandler);
+export const POST = apiAuthMiddleware(postHandler);

@@ -65,8 +65,8 @@ export default function CredentialsModal({ open, onClose }: CredentialsModalProp
 
   useEffect(() => {
     if (open) {
-      hydrateTimerRef.current = setTimeout(() => {
-        setForm(getCredentials());
+      hydrateTimerRef.current = setTimeout(async () => {
+        setForm(await getCredentials());
         setGhStatus('idle');
         setGhUser('');
         setSaved(false);

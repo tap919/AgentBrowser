@@ -3,11 +3,10 @@ Database Operations - Tier 4 Tool Use
 Autonomous SQL/NoSQL/Vector database operations
 """
 import json
+import re
 import sqlite3
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
-from pathlib import Path
 from loguru import logger
 from config import settings
 
@@ -52,6 +51,14 @@ class DatabaseOperations:
 
     # ===== SQLite Operations =====
 
+    @staticmethod
+    def _sanitize_identifier(name: str) -> str:
+        """Allow only valid SQL identifiers to prevent injection."""
+        sanitized = re.sub(r'[^a-zA-Z0-9_]', '', name)
+        if not sanitized or sanitized[0].isdigit():
+            raise ValueError(f"Invalid SQL identifier: {name!r}")
+        return sanitized
+
     def get_sqlite_connection(self, db_path: Optional[str] = None) -> sqlite3.Connection:
         """Get or create SQLite connection"""
         path = db_path or str(settings.memory_db_path)
@@ -87,8 +94,10 @@ class DatabaseOperations:
             tables = [row[0] for row in cursor.fetchall()]
 
             for table_name in tables:
+                safe_table = self._sanitize_identifier(table_name)
+
                 # Get columns
-                cursor = conn.execute(f"PRAGMA table_info('{table_name}')")
+                cursor = conn.execute("PRAGMA table_info('%s')" % safe_table)
                 columns = [
                     {
                         "name": row[1],
@@ -101,11 +110,11 @@ class DatabaseOperations:
                 ]
 
                 # Get row count
-                cursor = conn.execute(f"SELECT COUNT(*) FROM '{table_name}'")
+                cursor = conn.execute("SELECT COUNT(*) FROM '%s'" % safe_table)
                 row_count = cursor.fetchone()[0]
 
                 # Get indexes
-                cursor = conn.execute(f"PRAGMA index_list('{table_name}')")
+                cursor = conn.execute("PRAGMA index_list('%s')" % safe_table)
                 indexes = [row[1] for row in cursor.fetchall()]
 
                 info.tables.append({
@@ -207,16 +216,17 @@ class DatabaseOperations:
         import time
         start = time.time()
 
-        result = QueryResult(success=False, query=f"BULK INSERT INTO {table}")
+        result = QueryResult(success=False, query="BULK INSERT INTO %s" % table)
 
         try:
             conn = self.get_sqlite_connection(db_path)
 
-            columns = list(rows[0].keys())
+            safe_table = self._sanitize_identifier(table)
+            columns = [self._sanitize_identifier(col) for col in rows[0].keys()]
             placeholders = ", ".join(["?"] * len(columns))
             column_names = ", ".join(columns)
 
-            query = f"INSERT INTO {table} ({column_names}) VALUES ({placeholders})"
+            query = "INSERT INTO %s (%s) VALUES (%s)" % (safe_table, column_names, placeholders)
             values = [tuple(row.get(col) for col in columns) for row in rows]
 
             conn.executemany(query, values)

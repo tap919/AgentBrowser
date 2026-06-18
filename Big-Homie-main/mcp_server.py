@@ -6,11 +6,10 @@ Connect Big Homie to Claude Desktop, Cursor, and VS Code as a callable service
 import asyncio
 import json
 import sys
-from typing import Dict, List, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable
 from dataclasses import dataclass
 from enum import Enum
 from loguru import logger
-from pathlib import Path
 
 
 class MCPMessageType(str, Enum):
@@ -219,10 +218,10 @@ class MCPServer:
             raise ValueError("Missing tool name")
 
         # Execute tool via MCP integration.
-        # MCP clients have already confirmed their intent by calling the tool;
-        # pass confirmed=True so tools that require_confirmation can proceed.
+        # MCP clients confirm intent by calling the tool.
+        # Auth: the MCP server runs on stdio (local), so no token is needed.
         result = await mcp.execute_tool(
-            tool_name, arguments, context={"confirmed": True}
+            tool_name, arguments, context={"confirmed": arguments.get("_confirmed", False)}
         )
 
         if not result.success:

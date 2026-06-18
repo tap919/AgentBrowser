@@ -7,14 +7,97 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=file:./prisma/dev.db
-      - AGENT_API_KEY=${AGENT_API_KEY:-}
-      - CAPTCHA_PROVIDER=${CAPTCHA_PROVIDER:-none}
-      - CAPTCHA_API_KEY=${CAPTCHA_API_KEY:-}
-      - LLM_VISION_API_KEY=${LLM_VISION_API_KEY:-}
-      - LLM_VISION_ENDPOINT=${LLM_VISION_ENDPOINT:-}
-      - PROXY_URL=${PROXY_URL:-}
-      - PROXY_LIST=${PROXY_LIST:-}
+      - AGENT_API_KEY=${AGENT_API_KEY:-CHANGE_ME-API-KEY}
+      - NEXT_PUBLIC_BIG_HOMIE_URL=http://big-homie:8888
+      - NEXT_PUBLIC_BIG_HOMIE_WS_URL=ws://big-homie:8888/ws
+      - NEXT_PUBLIC_CLAW_PROTECT_URL=http://claw-protect:3333
+      - CLAW_PROTECT_URL=http://claw-protect:3333
+      - CLAW_PROTECT_API_KEY=${CLAW_PROTECT_API_KEY:-CHANGE_ME-API-KEY}
+      - MUTLY_URL=http://mutly:4000
+      - VIBESERVE_URL=http://vibeserve:8000
+      - VIBESERVE_API_KEY=${VIBESERVE_API_KEY:-CHANGE_ME-API-KEY}
+      - REPORANK_URL=http://reporank:3001
+      - REPORANK_API_KEY=${REPORANK_API_KEY:-CHANGE_ME-API-KEY}
+      - DISABLE_HEALTH_CHECK_CRON=false
     volumes:
       - ./prisma:/app/prisma
       - ./data:/app/data
+    depends_on:
+      - big-homie
+      - claw-protect
+      - mutly
+      - vibeserve
+      - reporank
     restart: unless-stopped
+
+  big-homie:
+    build: ./Big-Homie-main
+    ports:
+      - "8888:8888"
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8888
+      - USE_CLAW_PROTECT=true
+      - CLAW_PROTECT_URL=http://claw-protect:3333
+      - CLAW_PROTECT_API_KEY=${CLAW_PROTECT_API_KEY:-CHANGE_ME-API-KEY}
+      - AGENT_BROWSER_URL=http://agentbrowser:3000
+    volumes:
+      - ./Big-Homie-main:/app
+    depends_on:
+      - claw-protect
+    restart: unless-stopped
+
+  claw-protect:
+    build: ./Claw-Protect-main
+    ports:
+      - "3333:3333"
+    environment:
+      - CLAW_PORT=3333
+      - CLAW_PROTECT_API_KEY=${CLAW_PROTECT_API_KEY:-CHANGE_ME-API-KEY}
+      - CLAW_SERVE_SAAS=false
+    volumes:
+      - claw-data:/app/data
+    restart: unless-stopped
+
+  mutly:
+    build: ./Mutly-Daemon-Agent
+    ports:
+      - "4000:3000"
+      - "24678:24678"
+    environment:
+      - PORT=3000
+      - MUTLY_WS_PORT=24678
+      - MUTLY_API_KEY=${AGENT_API_KEY:-CHANGE_ME-API-KEY}
+      - ENABLE_VIBESERVE_MCP=true
+      - VIBESERVE_MCP_URL=http://vibeserve:8000
+      - VIBESERVE_API_KEY=${VIBESERVE_API_KEY:-CHANGE_ME-API-KEY}
+      - REPORANK_ENABLED=true
+      - REPORANK_API_URL=http://reporank:3001
+      - REPORANK_API_KEY=${REPORANK_API_KEY:-CHANGE_ME-API-KEY}
+      - NODE_ENV=production
+    depends_on:
+      - vibeserve
+      - reporank
+    restart: unless-stopped
+
+  vibeserve:
+    build: ./VibeServe-main
+    ports:
+      - "8000:8000"
+    environment:
+      - VIBESERVE_API_KEY=${VIBESERVE_API_KEY:-CHANGE_ME-API-KEY}
+      - DEFAULT_LLM_PROVIDER=local
+      - BIG_HOMIE_URL=http://big-homie:8888
+    restart: unless-stopped
+
+  reporank:
+    build: ./reporank
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - REPORANK_API_KEY=${REPORANK_API_KEY:-CHANGE_ME-API-KEY}
+    restart: unless-stopped
+
+volumes:
+  claw-data:
