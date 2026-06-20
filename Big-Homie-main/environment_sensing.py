@@ -2,7 +2,6 @@
 Environment Sensing - Tier 3 Perception
 Monitor system state, file changes, API responses, and runtime errors
 """
-import os
 import sys
 import time
 import asyncio
@@ -11,7 +10,6 @@ import threading
 from typing import Dict, List, Any, Optional, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
 from loguru import logger
 from config import settings
 

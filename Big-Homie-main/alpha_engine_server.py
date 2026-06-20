@@ -3,7 +3,6 @@ AlphaEngine HTTP Server - Combo 3 Integration
 Wraps AlphaEngine Python class as REST API for BlackMind integration
 """
 
-import asyncio
 import logging
 import os
 import sys
@@ -20,7 +19,7 @@ WORKFORCE_ROOT = Path(__file__).resolve().parent.parent
 ALPHA_ENGINE_PATH = WORKFORCE_ROOT / "AlphaEngine"
 sys.path.insert(0, str(ALPHA_ENGINE_PATH))
 
-from alpha_engine import AlphaEngine, get_alpha_engine, ALLOWED_CAPABILITIES
+from alpha_engine import get_alpha_engine, ALLOWED_CAPABILITIES
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

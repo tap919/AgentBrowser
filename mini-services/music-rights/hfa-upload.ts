@@ -27,9 +27,9 @@ rl.once('line', async (line) => {
     process.exit(1);
   }
 
-  const { email, password, publisherName, publisherIpi, catalog } = input;
+  const { email, password, publisherName, publisherIpi, publisherPNumber, catalog } = input;
 
-  if (!email || !password || !publisherName || !catalog || catalog.length === 0) {
+  if (!email || !password || !publisherName || catalog.length === 0) {
     console.log('❌ Missing required parameters: email, password, publisherName, catalog');
     process.exit(1);
   }
@@ -53,6 +53,9 @@ rl.once('line', async (line) => {
     const writers = writerStr.split(',').map((w: string) => w.trim()).filter((w: string) => w);
     const submitterWorkId = song.ascapId || song.mlcCode || '';
 
+    // Pad IPI/CAE to 11 digits (HFA requirement)
+    const ipi = song.ipi ? String(song.ipi).padStart(11, '0') : '';
+
     // Calculate split per writer (equal split)
     const splitPerWriter = Math.floor(100 / writers.length);
     
@@ -66,22 +69,22 @@ rl.once('line', async (line) => {
         song.title,                    // SONG TITLE
         '',                            // AKA TITLE
         '',                            // FIRST USE RESTRICTION
-        '',                            // ISWC
+        song.iswc || '',               // ISWC
         last,                          // WRITER LAST NAME
         first,                         // WRITER FIRST NAME
         middle,                        // WRITER MIDDLE NAME
-        '',                            // IPI/CAE
+        ipi,                           // IPI/CAE (11-digit padded)
         'SE',                          // WRITER TYPE (SE = Self)
         'US',                          // COUNTRY CODE
-        '',                            // P#
+        publisherPNumber || '',        // P#
         publisherName,                 // OWNER PUBLISHER NAME
-        publisherIpi || '',            // OWNER PUBLISHER IPI
+        publisherIpi ? publisherIpi.padStart(11, '0') : '',  // OWNER PUBLISHER IPI
         '',                            // ADMIN PUBLISHER NAME
         '',                            // ADMIN PUBLISHER IPI
         split,                         // SPLIT
-        '',                            // ARTIST NAME
-        '',                            // ALBUM TITLE
-        '',                            // ISRC
+        song.artistName || '',         // ARTIST NAME
+        song.albumTitle || '',         // ALBUM TITLE
+        song.isrc || '',               // ISRC
         submitterWorkId                // SUBMITTER WORK ID
       ];
       rows.push(row);

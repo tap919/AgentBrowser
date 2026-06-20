@@ -3,7 +3,6 @@ MCP (Model Context Protocol) Integration Layer
 Enables Big Homie to connect to external tools and APIs
 """
 
-import json
 import asyncio
 from typing import Dict, List, Any, Optional, Callable
 from dataclasses import dataclass, field
@@ -1078,9 +1077,11 @@ class MCPIntegration:
         # Security validation through Claw Protect if enabled
         if (
             self._claw_protect_client
-            and self._claw_protect_client.status == IntegrationStatus.CONNECTED
+            and self._claw_protect_client.status
         ):
-            from ultimate_agent import AgentAction
+            from ultimate_agent import AgentAction, IntegrationStatus
+            if self._claw_protect_client.status != IntegrationStatus.CONNECTED:
+                return {"success": False, "error": "Claw Protect not connected"}
 
             security_result = await self._claw_protect_client.validate_action(
                 AgentAction(

@@ -43,7 +43,7 @@ function AppContent() {
     return (
       <SetupWizard
         onComplete={(config) => {
-          console.log('Setup completed:', config);
+          // Setup callback
           setShowSetup(false);
         }}
       />

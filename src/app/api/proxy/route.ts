@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isIP } from 'net';
+import { resolve4 } from 'dns/promises';
 
 const MAX_BODY = 10 * 1024 * 1024;
 const FETCH_TIMEOUT = 15_000;
@@ -10,8 +11,12 @@ const PRIVATE_RANGES = [
   /^192\.168\./, /^172\.(1[6-9]|2\d|3[01])\./,
 ];
 
-/** Reject URLs that point at private / internal IPs (SSRF guard). */
-function isBlockedHost(urlStr: string): boolean {
+function isPrivateIP(ip: string): boolean {
+  return PRIVATE_RANGES.some(re => re.test(ip));
+}
+
+/** Reject URLs that point at private / internal IPs (SSRF guard, with DNS resolution). */
+async function isBlockedHost(urlStr: string): Promise<boolean> {
   try {
     const parsed = new URL(urlStr);
     if (!ALLOWED_PROTOCOLS.has(parsed.protocol) || parsed.username || parsed.password) {
@@ -22,7 +27,17 @@ function isBlockedHost(urlStr: string): boolean {
       return true;
     }
     if (isIP(hostname)) {
-      return PRIVATE_RANGES.some(re => re.test(hostname));
+      return isPrivateIP(hostname);
+    }
+    // Resolve DNS to catch hostnames pointing at private IPs (SSRF bypass prevention)
+    try {
+      const addresses = await resolve4(hostname);
+      if (addresses.some(addr => isPrivateIP(addr))) {
+        return true;
+      }
+    } catch {
+      // DNS resolution failed — reject to be safe
+      return true;
     }
     return false;
   } catch {
@@ -41,7 +56,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Only http/https URLs are allowed' }, { status: 400 });
   }
 
-  if (isBlockedHost(target)) {
+  if (await isBlockedHost(target)) {
     return NextResponse.json({ error: 'Blocked host' }, { status: 403 });
   }
 

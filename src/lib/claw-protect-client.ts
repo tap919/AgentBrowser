@@ -1,5 +1,5 @@
 const CLAW_PROTECT_URL = process.env.CLAW_PROTECT_URL || process.env.NEXT_PUBLIC_CLAW_PROTECT_URL || 'http://localhost:3333';
-const CLAW_PROTECT_API_KEY = process.env.CLAW_PROTECT_API_KEY || process.env.NEXT_PUBLIC_CLAW_PROTECT_API_KEY || '';
+const CLAW_PROTECT_API_KEY = process.env.CLAW_PROTECT_API_KEY || '';
 
 function clawProtectHeaders() {
   return {
@@ -28,7 +28,7 @@ export async function checkPromptInjection(text: string): Promise<{detected: boo
     };
   } catch (err) {
     console.error('Claw Protect prompt injection scan failed:', err);
-    throw err;
+    return { detected: true, warnings: ['Claw Protect unavailable — blocking request to be safe'] };
   }
 }
 
@@ -39,7 +39,7 @@ export async function scanForSecrets(content: string): Promise<string[]> {
       headers: clawProtectHeaders(),
       body: JSON.stringify({ content }),
     });
-    if (!response.ok) return [];
+    if (!response.ok) return ['security-check-unavailable'];
     const data = await response.json() as {
       findings?: string[];
       matches?: Array<{ type?: string; secretType?: string }>;
@@ -47,7 +47,7 @@ export async function scanForSecrets(content: string): Promise<string[]> {
     return data.findings || data.matches?.map(match => match.type || match.secretType || 'secret').filter(Boolean) || [];
   } catch (err) {
     console.error('Claw Protect secrets scan failed:', err);
-    throw err;
+    return ['security-check-unavailable'];
   }
 }
 

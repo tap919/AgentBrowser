@@ -71,7 +71,7 @@ export const POST = apiAuthMiddleware(async (request: Request) => {
       case 'execute': {
         if (!body.script) return NextResponse.json({ error: 'script required' }, { status: 400 });
         const { evaluate } = await import('@/lib/browser-controller');
-        const result = await evaluate(new Function(body.script) as () => unknown);
+        const result = await evaluate(body.script);
         return NextResponse.json({ success: true, result });
       }
 

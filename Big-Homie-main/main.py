@@ -19,10 +19,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QTabWidget,
     QListWidget,
-    QSplitter,
     QStatusBar,
-    QMenuBar,
-    QMenu,
     QMessageBox,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
@@ -31,10 +28,9 @@ from loguru import logger
 from config import settings
 from memory import memory
 from llm_gateway import llm, TaskType
-from progress_tracker import progress_tracker
 from correction_ledger import correction_ledger
 from tone_preference import tone_analyzer, preference_tracker
-from content_utils import smart_truncator, markdown_exporter
+from content_utils import markdown_exporter
 from fact_metadata import fact_checker, metadata_tagger
 from time_awareness import time_awareness
 from financial_settings_widget import SecureFinancialSettings
@@ -280,7 +276,7 @@ class BigHomieGUI(QMainWindow):
         header_layout.addWidget(self.kairos_status_label)
 
         # Cost display
-        self.cost_label = QLabel(f"Session Cost: $0.00")
+        self.cost_label = QLabel("Session Cost: $0.00")
         self.cost_label.setStyleSheet("font-weight: bold; color: #4CAF50;")
         header_layout.addWidget(self.cost_label)
 
@@ -449,7 +445,7 @@ class BigHomieGUI(QMainWindow):
 
     def create_ultimate_agent_tab(self) -> QWidget:
         """Create Ultimate Agent dashboard tab (Claw Protect + AgentBrowser integration)"""
-        from PyQt6.QtWidgets import QGroupBox, QScrollArea
+        from PyQt6.QtWidgets import QGroupBox
         from PyQt6.QtCore import QTimer
 
         widget = QWidget()
@@ -521,7 +517,7 @@ class BigHomieGUI(QMainWindow):
         self._connect_btn.setText("Connecting...")
 
         try:
-            from ultimate_agent import start_ultimate_agent, get_agent_status
+            from ultimate_agent import start_ultimate_agent
             from config import settings
 
             loop = asyncio.new_event_loop()

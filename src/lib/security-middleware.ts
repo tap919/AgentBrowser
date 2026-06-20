@@ -103,6 +103,9 @@ export class SecurityMiddleware {
         }
       } catch (err) {
         console.error('Claw Protect injection check failed:', err);
+        warnings.push('Claw Protect unreachable — security gate hard-stopped');
+        riskLevel = 'high';
+        blockedReasons.push('Claw Protect security check unavailable');
       }
     }
 
@@ -116,6 +119,9 @@ export class SecurityMiddleware {
         }
       } catch (err) {
         console.error('Claw Protect secrets scan failed:', err);
+        warnings.push('Claw Protect secrets scan unreachable — blocking');
+        riskLevel = riskLevel === 'high' ? 'high' : 'medium';
+        blockedReasons.push('Claw Protect secrets check unavailable');
       }
     }
 

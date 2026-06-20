@@ -27,7 +27,7 @@ export const SERVICES: ServiceDefinition[] = [
     id: 'mutly',
     name: 'Mutly Daemon Agent',
     type: 'mutly',
-    port: 3030,
+    port: 4000,
     healthEndpoint: '/api/health',
     status: 'unknown',
     capabilities: ['pipeline', 'build', 'code-review', 'autonomous-loop', 'drift-detection', 'approval-gates'],
@@ -317,7 +317,7 @@ export async function preBuildAudit(projectName: string, projectPath: string): P
       agentId: 'service-hub',
       ttl: 86400,
     });
-  } catch { /* non-critical */ }
+  } catch (err) { console.error('[service-hub] cacheRepoRankResult failed', err); }
 
   return { rank: result, plan };
 }

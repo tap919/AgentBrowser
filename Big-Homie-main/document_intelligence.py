@@ -3,7 +3,6 @@ Document Intelligence - Tier 3 Perception
 Parse and extract structured information from PDFs, spreadsheets, code repos, and more
 """
 import json
-import os
 import re
 import csv
 import io

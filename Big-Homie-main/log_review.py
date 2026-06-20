@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from collections import Counter, defaultdict
+from collections import defaultdict
 from loguru import logger
 from config import settings
 
@@ -371,7 +371,7 @@ class LogReviewSystem:
         self.analysis_history.append(analysis)
 
         # Log summary
-        logger.info(f"Daily Review Complete:")
+        logger.info("Daily Review Complete:")
         logger.info(f"  Errors: {total_errors}, Warnings: {total_warnings}")
         logger.info(f"  Patterns identified: {len(patterns)}")
         logger.info(f"  Success rate: {metrics['success_rate']}%")

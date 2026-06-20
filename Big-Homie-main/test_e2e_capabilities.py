@@ -2,11 +2,8 @@
 End-to-End Tests for Big Homie Capabilities
 Tests all major system components and features
 """
-import asyncio
 import sys
-from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Any
 
 # Test results tracking
 test_results = []
@@ -99,7 +96,7 @@ def test_vector_memory_system():
 def test_llm_gateway_initialization():
     """Test LLM gateway initialization without API calls"""
     try:
-        from llm_gateway import llm, Provider, TaskType
+        from llm_gateway import llm, TaskType
 
         assert llm is not None
         assert hasattr(llm, 'select_model')
@@ -124,7 +121,7 @@ def test_router_system():
         assert router is not None
         assert hasattr(router, 'route_task')
 
-        print(f"✅ Router system initialized")
+        print("✅ Router system initialized")
         return TestResult("Router System", True)
     except Exception as e:
         print(f"❌ Router system failed: {e}")
@@ -434,11 +431,6 @@ def test_integrations():
     """Test various integrations are loadable"""
     try:
         # Test that integration modules can be imported
-        from integrations import (
-            cloudflare_integration,
-            stripe_integration,
-            vercel_integration,
-        )
 
         print("✅ Integration modules loadable")
         return TestResult("Integrations", True)

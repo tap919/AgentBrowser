@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/credentials', () => ({
-  getCredentials: vi.fn(() => ({ githubToken: '' })),
+  getCredentials: vi.fn(async () => ({ githubToken: '' })),
 }));
 
 const { checkPromptInjection, scanForSecrets, checkClawProtectHealth } = await import('./claw-protect-client');
@@ -11,9 +11,11 @@ describe('claw-protect-client', () => {
     vi.restoreAllMocks();
   });
 
-  it('checkPromptInjection throws on network error', async () => {
+  it('checkPromptInjection flags as detected on network error (fail-closed)', async () => {
     vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network error'));
-    await expect(checkPromptInjection('test text')).rejects.toThrow('Network error');
+    const result = await checkPromptInjection('test text');
+    expect(result.detected).toBe(true);
+    expect(result.warnings).toContain('Claw Protect unavailable -- blocking request to be safe');
   });
 
   it('checkPromptInjection returns detected when flagged', async () => {
@@ -47,9 +49,10 @@ describe('claw-protect-client', () => {
     expect(result.detected).toBe(true);
   });
 
-  it('scanForSecrets throws on error', async () => {
+  it('scanForSecrets returns unavailable marker on error (fail-closed)', async () => {
     vi.spyOn(global, 'fetch').mockRejectedValue(new Error('timeout'));
-    await expect(scanForSecrets('some content')).rejects.toThrow('timeout');
+    const result = await scanForSecrets('some content');
+    expect(result).toContain('security-check-unavailable');
   });
 
   it('scanForSecrets returns findings', async () => {

@@ -47,10 +47,10 @@ RUN mkdir -p data && chown -R node:node /app
 
 USER node
 
-EXPOSE 3000
+EXPOSE 3333
 
 # Health check — hits the public health endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/health || exit 1
+  CMD wget -qO- http://localhost:3333/api/health || exit 1
 
 CMD ["node", "--loader", "tsx/esm", "server.ts"]

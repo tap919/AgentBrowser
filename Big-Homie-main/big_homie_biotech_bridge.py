@@ -3,19 +3,15 @@ BigHomieBiotechBridge - Combo 2: Big Homie + Biotech IDE Controller
 Bridges Big Homie autonomous agent to Biotech IDE experiments
 """
 
-import asyncio
-import json
 import logging
 import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import sys
-from pathlib import Path
 
 OVERLAB_ROOT = Path(__file__).resolve().parent.parent
 BIOTECH_IDE_CONTROLLER_PATH = OVERLAB_ROOT / "Overlay Science"
@@ -27,7 +23,6 @@ from biotech_ide_controller import (
     ExperimentStatus,
     ExtensionType,
     ExperimentRequest,
-    ExperimentResult,
 )
 
 logger = logging.getLogger(__name__)

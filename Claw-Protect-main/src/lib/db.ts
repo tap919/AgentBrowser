@@ -171,7 +171,6 @@ function migrate(db: Database.Database): void {
         db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(m.version, new Date().toISOString());
       });
       runMigration();
-      console.log(`[DB] Applied migration v${m.version}`);
     }
   }
 }
@@ -256,7 +255,6 @@ export const apiKeyDb = {
         });
       });
       insertAll(legacy);
-      console.log(`[DB] Migrated ${legacy.length} API keys from JSON`);
       return legacy.length;
     } catch { return 0; }
   },
@@ -308,7 +306,6 @@ export const usageDb = {
         });
       });
       insertAll(legacy.slice(-10000)); // import last 10k
-      console.log(`[DB] Migrated usage log from JSON`);
       return legacy.length;
     } catch { return 0; }
   },

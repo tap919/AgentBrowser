@@ -55,22 +55,18 @@ export function usePipeline() {
     isPaused: false,
   });
 
-  const pipelineTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isRunningRef = useRef(false);
-  const speedRef = useRef(1);
-  const isPausedRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
+  const isRunningRef = useRef(false);
+  const isPausedRef = useRef(false);
   const stateRef = useRef(state);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { speedRef.current = state.speed; }, [state.speed]);
   useEffect(() => { isPausedRef.current = state.isPaused; }, [state.isPaused]);
   useEffect(() => { stateRef.current = state; }, [state]);
 
   useEffect(() => {
     return () => {
-      if (pipelineTimerRef.current) clearTimeout(pipelineTimerRef.current);
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       isRunningRef.current = false;
       abortRef.current?.abort();
@@ -106,9 +102,7 @@ export function usePipeline() {
             }));
             isRunningRef.current = true;
             isPausedRef.current = true;
-            speedRef.current = saved.speed;
             setLastSaved(new Date(saved.savedAt));
-            runPipeline(saved.currentPhase);
           },
         },
       });
@@ -142,19 +136,6 @@ export function usePipeline() {
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [state.phases, state.currentPhase, state.currentSubStep, state.confidence, state.isPaused, state.view, state.pipelineRunning, state.project, state.analysis, state.metrics, state.findings, state.log, state.speed, state.techStack]);
 
-  const wait = useCallback((ms: number) => new Promise<void>(resolve => {
-    const TICK = 50;
-    let elapsed = 0;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const tick = () => {
-      if (!isRunningRef.current) { resolve(); return; }
-      if (!isPausedRef.current) elapsed += TICK;
-      if (elapsed >= ms / speedRef.current) { resolve(); return; }
-      timer = setTimeout(tick, TICK);
-    };
-    timer = setTimeout(tick, TICK);
-  }), []);
-
   const addLog = useCallback((text: string, icon: string, color: string, category: LogEntry['category'], detail?: string) => {
     const now = new Date();
     const time = now.getHours().toString().padStart(2, '0') + ':' +
@@ -174,6 +155,24 @@ export function usePipeline() {
       ...prev,
       findings: [...prev.findings, { ...finding, id: Math.random().toString(36).substring(2, 9) }],
     }));
+  }, []);
+
+  const updatePhaseProgress = useCallback((phaseIdx: number, progress: number, subStepMsg?: string) => {
+    setState(prev => {
+      const phases = [...prev.phases];
+      if (phaseIdx >= 0 && phaseIdx < phases.length) {
+        phases[phaseIdx] = { ...phases[phaseIdx], progress };
+        if (subStepMsg) {
+          const subStepIdx = PHASES_DEF[phaseIdx]?.subs.findIndex(s => subStepMsg.includes(s.slice(0, 20)));
+          if (subStepIdx >= 0) {
+            const subSteps = [...phases[phaseIdx].subSteps];
+            subSteps[subStepIdx] = { ...subSteps[subStepIdx], status: 'running' };
+            phases[phaseIdx] = { ...phases[phaseIdx], subSteps };
+          }
+        }
+      }
+      return { ...prev, phases, currentPhase: phaseIdx };
+    });
   }, []);
 
   const generateAuditFindings = useCallback(async (phaseIdx: number, subName: string) => {
@@ -222,212 +221,157 @@ export function usePipeline() {
     }
   }, [addFinding, stateRef]);
 
-  const runPipeline = useCallback(async (startPhase = 0) => {
-    const settings = getSettings();
-    const securityLevel = (settings.security?.level ?? 'active') as SecurityLevel;
-    securityMiddleware.setSecurityLevel(securityLevel);
-
-    for (let pi = startPhase; pi < PHASES_DEF.length; pi++) {
-      if (!isRunningRef.current) return;
-
-      const phaseDef = PHASES_DEF[pi];
-      const securityCheckType = phaseDef.securityCheck ?? 'command-validation';
-      const securityAction = `phase:${phaseDef.id}:${phaseDef.name}`;
-      const securityParams = { phaseId: phaseDef.id, subSteps: phaseDef.subs, checkType: securityCheckType };
-
-      let securityResult: SecurityResult;
-      try {
-        securityResult = await securityMiddleware.validateAction(securityAction, securityParams);
-      } catch (err) {
-        addLog(`Security check failed: ${err}`, 'shield-alert', 'text-red-400', 'security');
-        securityResult = { approved: false, riskLevel: 'high', warnings: [], blockedReasons: ['Security validation error'] };
-      }
-
-      if (securityResult.riskLevel !== 'low') {
-        addLog(`Security: ${securityCheckType} check - ${securityResult.riskLevel} risk`, 'shield', securityResult.riskLevel === 'high' ? 'text-red-400' : 'text-yellow-400', 'security');
-      }
-
-      if ((securityLevel === 'active' || securityLevel === 'configurable') && !securityResult.approved && securityResult.requiresConfirmation) {
-        addLog(`High-risk action: ${phaseDef.name} — User confirmation required`, 'shield-alert', 'text-orange-400', 'security');
-        addLog('Pipeline paused. Review in Security Dashboard, then resume if safe.', 'pause-circle', 'text-orange-400', 'security');
-        setState(prev => ({ ...prev, pipelineRunning: false, isPaused: true }));
-        return;
-      }
-
-      if (securityLevel === 'active' && !securityResult.approved) {
-        addLog(`Blocked: ${phaseDef.name} - security violation`, 'shield-alert', 'text-red-400', 'security');
-        for (const reason of securityResult.blockedReasons) {
-          addLog(`  blocked: ${reason}`, 'x', 'text-red-400', 'security');
+  // SSE event handler — defined before handleBuildStream since it's referenced there
+  const handleSSEUpdate = useCallback((eventType: string, data: Record<string, unknown>) => {
+    switch (eventType) {
+      case 'phase-start': {
+        const phaseId = data.phaseId as number;
+        const phaseIdx = PHASES_DEF.findIndex(p => p.id === phaseId);
+        if (phaseIdx >= 0) {
+          addLog(`Starting: ${data.phaseName as string}`, 'play', 'text-purple-400', 'build');
+          setState(prev => {
+            const phases = [...prev.phases];
+            phases[phaseIdx] = { ...phases[phaseIdx], status: 'running', progress: 0 };
+            return { ...prev, phases, currentPhase: phaseIdx, currentSubStep: 0 };
+          });
         }
-        setState(prev => ({ ...prev, pipelineRunning: false, isPaused: true }));
-        return;
+        break;
       }
-
-      if (settings.pipeline.skipAudit && phaseDef.type === 'audit') {
-        addLog(`Skipped: ${phaseDef.name} (audit gates disabled)`, 'skip-forward', 'text-amber-400', 'info');
-        setState(prev => {
-          const phases = [...prev.phases];
-          phases[pi] = { ...phases[pi], status: 'completed', progress: 100 };
-          const confidence = Math.min(100, Math.round(((pi + 1) / PHASES_DEF.length) * 100));
-          return { ...prev, phases, confidence };
-        });
-        continue;
-      }
-
-      setState(prev => {
-        const phases = [...prev.phases];
-        phases[pi] = { ...phases[pi], status: 'running', estimatedTime: `${phaseDef.subs.length * 3 + Math.floor(Math.random() * 8)}s` };
-        return { ...prev, phases, currentPhase: pi, currentSubStep: 0 };
-      });
-
-      const phaseIntegrations = getEnabledIntegrations(phaseDef.id);
-      if (phaseIntegrations.length > 0) {
-        addLog(`Integrations active: ${phaseIntegrations.map(i => i.name).join(', ')}`, 'plug', 'text-cyan-400', 'info');
-      }
-
-      const activeAgents = getActiveAgents();
-      if (activeAgents.length > 0 && [1, 6, 8].includes(phaseDef.id)) {
-        addLog(`Custom agents: ${activeAgents.map(a => a.name).join(', ')}`, 'bot', 'text-purple-400', 'info');
-      }
-
-      addLog(`Starting: ${phaseDef.name}`, 'play', 'text-purple-400', 'build');
-
-      for (let si = 0; si < phaseDef.subs.length; si++) {
-        if (!isRunningRef.current) return;
-
-        setState(prev => {
-          const phases = [...prev.phases];
-          const subSteps = [...phases[pi].subSteps];
-          subSteps[si] = { ...subSteps[si], status: 'running' };
-          phases[pi] = { ...phases[pi], subSteps, progress: Math.round(((si) / phaseDef.subs.length) * 100) };
-          return { ...prev, phases, currentSubStep: si };
-        });
-
-        await wait(800 + Math.random() * 1400);
-
-        const subName = phaseDef.subs[si];
-
-        if (phaseDef.type === 'audit') {
-          await generateAuditFindings(pi, subName);
-
-          if (settings.pipeline.autoFix) {
-            await wait(400 + Math.random() * 600);
-            setState(prev => {
-              const newFindings = [...prev.findings];
-              let autoFixed = 0;
-              for (const f of newFindings) {
-                if (f.phase === phaseDef.id && f.severity !== 'pass' && !f.fixed) {
-                  f.fixed = true;
-                  autoFixed++;
-                }
-              }
-              if (autoFixed > 0) {
-                addLog(`Auto-fixed ${autoFixed} issue${autoFixed > 1 ? 's' : ''}`, 'wrench', 'text-orange-400', 'fix');
-              }
-              return { ...prev, findings: newFindings };
-            });
-          }
-        } else {
-          addLog(subName, 'check', 'text-emerald-400', 'build');
+      case 'phase-progress': {
+        const phaseId = data.phaseId as number;
+        const progress = data.progress as number;
+        const message = data.message as string;
+        const phaseIdx = PHASES_DEF.findIndex(p => p.id === phaseId);
+        if (phaseIdx >= 0 && message) {
+          addLog(message, 'check', 'text-emerald-400', 'build');
+          updatePhaseProgress(phaseIdx, progress, message);
         }
-
-        setState(prev => ({
-          ...prev,
-          metrics: {
-            linesOfCode: prev.metrics.linesOfCode + Math.floor(Math.random() * 200) + 50,
-            filesCreated: prev.metrics.filesCreated + (Math.random() > 0.5 ? 1 : 0),
-            testsPassing: prev.metrics.testsPassing + (Math.random() > 0.6 ? 1 : 0),
-            securityScore: Math.min(100, prev.metrics.securityScore + (phaseDef.type === 'audit' ? Math.floor(Math.random() * 15) + 5 : Math.floor(Math.random() * 3))),
-          },
-        }));
-
-        setState(prev => {
-          const phases = [...prev.phases];
-          const subSteps = [...phases[pi].subSteps];
-          subSteps[si] = { ...subSteps[si], status: 'completed' };
-          phases[pi] = { ...phases[pi], subSteps, progress: Math.round(((si + 1) / phaseDef.subs.length) * 100) };
-          return { ...prev, phases, currentSubStep: si + 1 };
-        });
+        break;
       }
-
-      if (phaseDef.type === 'audit') {
-        setState(prev => {
-          const criticals = prev.findings.filter(f => f.phase === phaseDef.id && f.severity === 'critical');
-          if (criticals.length > 0) {
-            addLog(`Audit gate: ${criticals.length} critical issue(s) — auto-fixing`, 'shield', 'text-red-400', 'audit');
-            const newFindings = [...prev.findings];
-            for (const f of newFindings) {
-              if (f.phase === phaseDef.id && f.severity === 'critical') {
-                f.fixed = true;
-                f.severity = 'pass';
-              }
-            }
-            addLog('All critical issues resolved', 'check-circle', 'text-emerald-400', 'fix');
-            return { ...prev, findings: newFindings };
-          } else {
-            addLog(`Audit gate passed — no critical issues`, 'shield', 'text-emerald-400', 'audit');
-            return prev;
+      case 'phase-complete': {
+        const phaseId = data.phaseId as number;
+        const result = data.result as Record<string, unknown>;
+        const phaseIdx = PHASES_DEF.findIndex(p => p.id === phaseId);
+        if (phaseIdx >= 0) {
+          const metrics = result.metrics as Record<string, number> | undefined;
+          if (metrics) {
+            setState(prev => ({
+              ...prev,
+              metrics: {
+                linesOfCode: prev.metrics.linesOfCode + (metrics.linesOfCode || 0),
+                filesCreated: prev.metrics.filesCreated + (metrics.filesCreated || 0),
+                testsPassing: prev.metrics.testsPassing + (metrics.testsPassing || 0),
+                securityScore: Math.max(prev.metrics.securityScore, metrics.securityScore || 0),
+              },
+            }));
           }
-        });
-      } else {
-        addLog(`Completed: ${phaseDef.name}`, 'check-check', 'text-emerald-400', 'build');
+          const confidence = Math.min(100, Math.round(((phaseIdx + 1) / PHASES_DEF.length) * 100));
+          setState(prev => {
+            const phases = [...prev.phases];
+            phases[phaseIdx] = { ...phases[phaseIdx], status: 'completed', progress: 100, subSteps: phases[phaseIdx].subSteps.map(s => ({ ...s, status: 'completed' as const })) };
+            return { ...prev, phases, confidence };
+          });
+          const phaseName = data.phaseName as string;
+          addLog(`Completed: ${phaseName}`, 'check-check', 'text-emerald-400', 'build');
+        }
+        break;
       }
-
-      setState(prev => {
-        const phases = [...prev.phases];
-        phases[pi] = { ...phases[pi], status: 'completed', progress: 100 };
-        const confidence = Math.min(100, Math.round(((pi + 1) / PHASES_DEF.length) * 100));
-        return { ...prev, phases, confidence };
-      });
+      case 'pipeline-complete': {
+        const metrics = data.metrics as Record<string, number> | undefined;
+        if (metrics) {
+          setState(prev => ({
+            ...prev,
+            metrics: {
+              linesOfCode: metrics.linesOfCode || prev.metrics.linesOfCode,
+              filesCreated: metrics.filesCreated || prev.metrics.filesCreated,
+              testsPassing: metrics.testsPassing || prev.metrics.testsPassing,
+              securityScore: metrics.securityScore || prev.metrics.securityScore,
+            },
+          }));
+        }
+        isRunningRef.current = false;
+        addLog('Project build complete!', 'party-popper', 'text-purple-400', 'deploy');
+        setState(prev => ({ ...prev, pipelineRunning: false, confidence: 100, isPaused: false }));
+        break;
+      }
+      case 'pipeline-error': {
+        const error = data.error as string;
+        addLog(`Build error: ${error}`, 'x-circle', 'text-red-400', 'error');
+        isRunningRef.current = false;
+        setState(prev => ({ ...prev, pipelineRunning: false, isPaused: false }));
+        break;
+      }
     }
+  }, [addLog, updatePhaseProgress]);
 
-    addLog('Generating final site...', 'code', 'text-blue-400', 'build');
+  const handleBuildStream = useCallback(async (input: { name: string; description: string; type: string; audience: string }) => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      const projectSnap = stateRef.current?.project;
-      if (projectSnap) {
-        const res = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: projectSnap.name,
-            description: projectSnap.description,
-            type: projectSnap.type,
-            audience: projectSnap.audience,
-          }),
-        });
-        if (res.ok) {
-          const site = await res.json() as { html: string; businessType: string };
-          const previewSnapshot = buildPreviewSnapshot(projectSnap);
-          try {
-            localStorage.setItem(GENERATED_HTML_STORAGE_KEY, site.html);
-            localStorage.setItem(PREVIEW_PROJECT_STORAGE_KEY, JSON.stringify(previewSnapshot));
-            localStorage.setItem(GENERATED_META_STORAGE_KEY, getPreviewFingerprint(previewSnapshot));
-      } catch (storageErr) {
-        console.warn('Failed to store generated HTML:', storageErr);
+      const res = await fetch('/api/pipeline/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Build failed' }));
+        addLog(`Build error: ${errData.error}`, 'x-circle', 'text-red-400', 'error');
+        setState(prev => ({ ...prev, pipelineRunning: false, isPaused: false }));
+        return;
       }
-      addLog(`Site generated: ${site.businessType} template applied`, 'check-check', 'text-emerald-400', 'build');
+
+      const reader = res.body?.getReader();
+      if (!reader) {
+        addLog('Failed to read build stream', 'x-circle', 'text-red-400', 'error');
+        setState(prev => ({ ...prev, pipelineRunning: false, isPaused: false }));
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let currentEvent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!isRunningRef.current) { controller.abort(); break; }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = '';
+
+        for (let i = 0; i < lines.length - 1; i++) {
+          const line = lines[i];
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
+            if (currentEvent) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                handleSSEUpdate(currentEvent, data);
+              } catch {}
+              currentEvent = '';
+            }
+          }
         }
+        buffer = lines[lines.length - 1] || '';
       }
-    } catch (err) {
-      console.warn('Site generation failed:', err);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      addLog(`Build connection error: ${err instanceof Error ? err.message : 'Unknown'}`, 'x-circle', 'text-red-400', 'error');
+    } finally {
+      isRunningRef.current = false;
+      setState(prev => {
+        if (prev.confidence < 100) {
+          return { ...prev, pipelineRunning: false, isPaused: false };
+        }
+        return prev;
+      });
     }
-
-    isRunningRef.current = false;
-    setState(prev => ({ ...prev, pipelineRunning: false, isPaused: false, confidence: 100, metrics: { ...prev.metrics, securityScore: 97 } }));
-    addLog('Project complete and delivered!', 'party-popper', 'text-purple-400', 'deploy');
-    toast.success('Project Delivered!', { description: 'Your project is built, audited, and live.' });
-
-    import('canvas-confetti').then(({ default: confetti }) => {
-      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
-      setTimeout(() => {
-        confetti({ particleCount: 60, angle: 60, spread: 55, origin: { x: 0 } });
-        confetti({ particleCount: 60, angle: 120, spread: 55, origin: { x: 1 } });
-      }, 400);
-    });
-
-    await wait(1600);
-    setState(prev => ({ ...prev, view: 'complete' }));
-  }, [addLog, generateAuditFindings, wait]);
+  }, [addLog, handleSSEUpdate]);
 
   const handleFormSubmit = useCallback(async (data: ProjectData) => {
     abortRef.current?.abort();
@@ -443,6 +387,18 @@ export function usePipeline() {
     }
 
     setState(prev => ({ ...prev, view: 'analyzing', project: data }));
+
+    // Pre-build audit: run RepoRank to score the project upfront
+    try {
+      const { preBuildAudit } = await import('@/lib/service-hub');
+      const audit = await preBuildAudit(data.name, data.name.replace(/\s+/g, '-').toLowerCase());
+      addLog(`RepoRank score: ${audit.rank.quality} (${audit.rank.score}/100)`, 'check', audit.rank.score >= 70 ? 'text-emerald-400' : 'text-amber-400', 'build');
+      if (audit.rank.issues.length > 0) {
+        for (const issue of audit.rank.issues.slice(0, 3)) {
+          addLog(`  Issue: ${issue}`, 'alert-triangle', 'text-yellow-400', 'build');
+        }
+      }
+    } catch { /* RepoRank not available — skip pre-build audit */ }
 
     try {
       const res = await fetch('/api/analyze', {
@@ -503,20 +459,19 @@ export function usePipeline() {
     const integrationNames = enabledIntegrations.map(i => i.name);
     const agentNames = activeAgents.map(a => a.name);
 
-    const parts = ['Autonomous build is now running'];
+    const parts = ['Real pipeline build is now running'];
     if (integrationNames.length) parts.push(`Integrations: ${integrationNames.join(', ')}`);
     if (agentNames.length) parts.push(`Custom agents: ${agentNames.join(', ')}`);
 
     toast('Build pipeline started', { description: parts.join(' · ') });
 
-    speedRef.current = settings.pipeline.defaultSpeed;
+    const projectSnap = stateRef.current?.project;
 
     setState(prev => ({
       ...prev,
       view: 'pipeline',
       pipelineRunning: true,
       isPaused: false,
-      speed: settings.pipeline.defaultSpeed,
       phases: PHASES_DEF.map(p => ({
         id: p.id,
         name: p.name,
@@ -534,14 +489,25 @@ export function usePipeline() {
       metrics: { linesOfCode: 0, filesCreated: 0, testsPassing: 0, securityScore: 0 },
     }));
     isRunningRef.current = true;
-    isPausedRef.current = false;
     clearBuildState();
-    runPipeline();
-  }, [runPipeline]);
+
+    if (projectSnap) {
+      handleBuildStream({
+        name: projectSnap.name,
+        description: projectSnap.description,
+        type: projectSnap.type,
+        audience: projectSnap.audience,
+      });
+    }
+  }, [handleBuildStream]);
 
   const handlePauseResume = useCallback(() => {
-    setState(prev => ({ ...prev, isPaused: !prev.isPaused }));
-  }, []);
+    if (state.pipelineRunning) {
+      isPausedRef.current = !isPausedRef.current;
+      setState(prev => ({ ...prev, isPaused: !prev.isPaused }));
+      addLog(isPausedRef.current ? 'Build paused' : 'Build resumed', isPausedRef.current ? 'pause-circle' : 'play-circle', 'text-amber-400', 'info');
+    }
+  }, [state.pipelineRunning, addLog]);
 
   const handleSpeedChange = useCallback((speed: number) => {
     setState(prev => ({ ...prev, speed }));
@@ -571,7 +537,7 @@ export function usePipeline() {
 
   const handleNewProject = useCallback(() => {
     isRunningRef.current = false;
-    if (pipelineTimerRef.current) clearTimeout(pipelineTimerRef.current);
+    if (abortRef.current) abortRef.current.abort();
     clearBuildState();
     try {
       localStorage.removeItem(PREVIEW_PROJECT_STORAGE_KEY);
@@ -623,11 +589,11 @@ export function usePipeline() {
 
   return {
     state, setState, lastSaved,
-    pipelineTimerRef, isRunningRef, speedRef, isPausedRef, abortRef,
+    abortRef, isRunningRef, isPausedRef,
     handleFormSubmit, handleStartBuild, handlePauseResume,
     handleSpeedChange, handleExportReport, handleNewProject,
-    handleRunAudit, runPipeline, addLog, wait, auditScore, totalChecks, passedChecks,
-    generateAuditFindings,
+    handleRunAudit, addLog, auditScore, totalChecks, passedChecks,
+    generateAuditFindings, handleBuildStream,
   };
 }
 

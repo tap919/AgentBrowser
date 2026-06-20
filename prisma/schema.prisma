@@ -121,6 +121,7 @@ model AgentMemory {
 
   @@unique([namespace, key])
   @@index([namespace, agentId, expiresAt])
+  @@index([expiresAt])
 }
 
 // Phase 0: Agent Event Bus — durable event store

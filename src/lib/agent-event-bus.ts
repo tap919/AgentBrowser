@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { db } from '@/lib/db';
 
-export type EventType = 'discovery' | 'alert' | 'artifact' | 'decision' | 'error' | 'state_change' | 'agent:started' | 'agent:completed' | 'agent:failed' | 'memory:write' | 'pipeline:started' | 'pipeline:completed' | 'pipeline:failed' | 'trigger:content-from-intel' | 'trigger:business-from-content';
+export type EventType = 'discovery' | 'alert' | 'artifact' | 'decision' | 'error' | 'state_change' | 'agent:started' | 'agent:completed' | 'agent:failed' | 'memory:write' | 'pipeline:started' | 'pipeline:completed' | 'pipeline:failed' | 'trigger:content-from-intel' | 'trigger:business-from-content' | 'trigger:business-from-insights';
 
 export interface AgentEvent {
   id: string;
@@ -82,6 +82,11 @@ class AgentEventBus {
       return this.recentEvents.filter(e => e.type === type).slice(0, limit);
     }
     return this.recentEvents.slice(0, limit);
+  }
+
+  clearAllListeners(): void {
+    this.emitter.removeAllListeners();
+    this.recentEvents = [];
   }
 
   private async persistEvent(event: AgentEvent): Promise<void> {

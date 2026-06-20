@@ -3,7 +3,7 @@ Cost Guards Module
 Budget management, throttling, and cost estimation for LLM operations
 """
 import asyncio
-from datetime import datetime, date, timedelta
+from datetime import date
 from typing import Optional, Dict, Any, Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -185,21 +185,36 @@ class CostGuard:
             "claude-opus-4-5": (15.0, 75.0),
             "claude-sonnet-4-5": (3.0, 15.0),
             "claude-3.5-sonnet": (3.0, 15.0),
+            "claude-3-5-haiku": (0.80, 4.0),
             "claude-haiku": (0.25, 1.25),
             "claude-3-haiku": (0.25, 1.25),
+            "claude-opus": (15.0, 75.0),
 
             # OpenAI GPT
+            "gpt-4o": (2.50, 10.0),
+            "gpt-4o-mini": (0.15, 0.60),
             "gpt-4": (30.0, 60.0),
             "gpt-4-turbo": (10.0, 30.0),
             "gpt-3.5-turbo": (0.5, 1.5),
+            "o1": (15.0, 60.0),
+            "o3-mini": (1.10, 4.40),
 
             # Google Gemini (via OpenRouter)
+            "gemini-2.0-flash": (0.10, 0.40),
+            "gemini-2.0-pro": (1.25, 5.0),
             "google/gemini-flash-1.5-8b": (0.04, 0.15),
             "google/gemini-pro-1.5": (1.25, 5.0),
+
+            # DeepSeek
+            "deepseek-chat": (0.14, 0.28),
+            "deepseek-reasoner": (0.55, 2.19),
 
             # Ollama (local - free)
             "qwen2.5:7b": (0.0, 0.0),
             "deepseek-coder:6.7b": (0.0, 0.0),
+            "llama3": (0.0, 0.0),
+            "mistral": (0.0, 0.0),
+            "phi": (0.0, 0.0),
         }
 
         # Find matching pricing

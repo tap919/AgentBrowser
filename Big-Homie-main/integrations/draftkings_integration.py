@@ -4,7 +4,7 @@ Provides sports betting data and odds retrieval
 NOTE: This integration is for data retrieval only, not for placing bets
 """
 import httpx
-from typing import Dict, List, Optional, Any
+from typing import Optional, Any
 from dataclasses import dataclass
 from loguru import logger
 from config import settings

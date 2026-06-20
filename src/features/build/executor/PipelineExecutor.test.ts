@@ -79,18 +79,18 @@ describe('PipelineExecutor', () => {
 
     // Files from Phase 6 (Core Features)
     expect(fs.existsSync(path.join(projectDir, 'src', 'app', 'page.tsx'))).toBe(true);
-    expect(fs.existsSync(path.join(projectDir, 'src', 'app', 'api', 'route.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(projectDir, 'src', 'app', 'api', 'health', 'route.ts'))).toBe(true);
 
     // Files from Phase 9 (Features)
     expect(fs.existsSync(path.join(projectDir, 'src', 'app', 'error.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(projectDir, 'src', 'app', 'loading.tsx'))).toBe(true);
 
-    // Reports from Phase 7, 10, 11
+    // Reports from Phase 7, 11
     expect(fs.existsSync(path.join(projectDir, 'audit-report.json'))).toBe(true);
     expect(fs.existsSync(path.join(projectDir, 'full-audit-report.json'))).toBe(true);
 
     // Deploy docs from Phase 12
-    expect(fs.existsSync(path.join(projectDir, 'VERCEL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(projectDir, 'vercel.json'))).toBe(true);
     expect(fs.existsSync(path.join(projectDir, 'DEPLOYMENT_SUMMARY.md'))).toBe(true);
   });
 

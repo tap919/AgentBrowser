@@ -88,3 +88,10 @@ data/books/.text/
 
 # Scripts
 /scripts/
+
+# Subproject env files
+reporank/.env
+Big-Homie-main/.env
+Claw-Protect-main/.env
+Mutly-Daemon-Agent/.env
+VibeServe-main/.env

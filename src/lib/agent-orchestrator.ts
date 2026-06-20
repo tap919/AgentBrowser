@@ -5,6 +5,7 @@ import { agentScheduler } from '@/lib/agent-scheduler';
 import { executeBusinessSkill } from '@/lib/business/bridge';
 import { writeMemory, readMemory } from '@/lib/agent-memory';
 import cron from 'node-cron';
+import type { ScheduledTask } from 'node-cron';
 import type { BusinessSkillId } from '@/lib/business/skills';
 
 // ─── Types ───
@@ -161,6 +162,41 @@ async function executeNode(
   }
 }
 
+// ─── Pipeline mutex (prevents concurrent runs of same pipeline) ───
+const pipelineMutexes = new Map<string, Promise<void>>();
+// ─── Pipeline cron job tracker (prevents duplicate schedules) ───
+const pipelineCronJobs = new Map<string, ScheduledTask>();
+
+// ─── Abort flags — force-delete signals a running pipeline to stop ───
+const pipelineAbortFlags = new Map<string, boolean>();
+
+function setAbortFlag(pipelineId: string): void {
+  pipelineAbortFlags.set(pipelineId, true);
+}
+
+function checkAbortFlag(pipelineId: string): boolean {
+  return pipelineAbortFlags.get(pipelineId) === true;
+}
+
+function clearAbortFlag(pipelineId: string): void {
+  pipelineAbortFlags.delete(pipelineId);
+}
+
+async function withPipelineMutex<T>(pipelineId: string, fn: () => Promise<T>): Promise<T> {
+  while (pipelineMutexes.has(pipelineId)) {
+    await pipelineMutexes.get(pipelineId);
+  }
+  const promise = (async () => {
+    try {
+      return await fn();
+    } finally {
+      pipelineMutexes.delete(pipelineId);
+    }
+  })();
+  pipelineMutexes.set(pipelineId, promise.then(() => {}) as Promise<void>);
+  return promise;
+}
+
 // ─── Public API ───
 
 export async function createPipeline(name: string, definition: PipelineDefinition, schedule?: string): Promise<{ id: string }> {
@@ -176,12 +212,19 @@ export async function createPipeline(name: string, definition: PipelineDefinitio
 }
 
 export async function runPipeline(pipelineId: string): Promise<PipelineRunResult[]> {
+  return withPipelineMutex(pipelineId, async () => {
   const pipeline = await db.agentPipeline.findUnique({ where: { id: pipelineId } });
   if (!pipeline) throw new Error(`Pipeline not found: ${pipelineId}`);
   if (!pipeline.enabled) throw new Error(`Pipeline is disabled: ${pipelineId}`);
 
   const definition = JSON.parse(pipeline.definition) as PipelineDefinition;
-  const sorted = topoSort(definition.nodes);
+  let sorted: PipelineNode[];
+  try {
+    sorted = topoSort(definition.nodes);
+  } catch (dagErr) {
+    console.warn(`[Orchestrator] DAG topoSort failed for ${pipeline.name}, falling back to sequential:`, dagErr);
+    sorted = definition.nodes;
+  }
 
   const run = await db.agentPipelineRun.create({
     data: {
@@ -198,6 +241,10 @@ export async function runPipeline(pipelineId: string): Promise<PipelineRunResult
 
   try {
     for (const node of sorted) {
+      if (checkAbortFlag(pipelineId)) {
+        clearAbortFlag(pipelineId);
+        throw new Error('Pipeline aborted by force-delete');
+      }
       const resolvedInput = resolveInput(node, nodeOutputs);
       const result = await executeNode(node, resolvedInput);
       nodeOutputs.set(node.id, result);
@@ -243,6 +290,7 @@ export async function runPipeline(pipelineId: string): Promise<PipelineRunResult
 
     throw err;
   }
+  });
 }
 
 export async function listPipelines(): Promise<Array<{ id: string; name: string; enabled: boolean; schedule: string | null; runCount: number }>> {
@@ -291,12 +339,52 @@ export async function enablePipeline(pipelineId: string, enabled: boolean): Prom
   });
 }
 
-export async function deletePipeline(pipelineId: string): Promise<void> {
+export async function deletePipeline(pipelineId: string, timeout = 30_000): Promise<void> {
+  const job = pipelineCronJobs.get(pipelineId);
+  if (job) {
+    job.stop();
+    pipelineCronJobs.delete(pipelineId);
+  }
+  await withPipelineMutex(pipelineId, async () => {
+    await db.agentPipelineRun.deleteMany({ where: { pipelineId } });
+    await db.agentPipeline.delete({ where: { id: pipelineId } });
+  });
+}
+
+export async function forceDeletePipeline(pipelineId: string, timeout = 30_000): Promise<void> {
+  const job = pipelineCronJobs.get(pipelineId);
+  if (job) {
+    job.stop();
+    pipelineCronJobs.delete(pipelineId);
+  }
+  setAbortFlag(pipelineId);
+  try {
+    const start = Date.now();
+    while (pipelineMutexes.has(pipelineId)) {
+      if (Date.now() - start > timeout) break;
+      await pipelineMutexes.get(pipelineId);
+    }
+  } finally {
+    clearAbortFlag(pipelineId);
+  }
+  await db.agentPipelineRun.updateMany({
+    where: { pipelineId, status: 'running' },
+    data: { status: 'aborted', completedAt: new Date() },
+  });
   await db.agentPipelineRun.deleteMany({ where: { pipelineId } });
   await db.agentPipeline.delete({ where: { id: pipelineId } });
 }
 
+export function shutdownOrchestrator(): void {
+  pipelineCronJobs.forEach(job => job.stop());
+  pipelineCronJobs.clear();
+}
+
 export async function schedulePipelines(): Promise<void> {
+  // Stop existing pipeline cron jobs
+  pipelineCronJobs.forEach(job => job.stop());
+  pipelineCronJobs.clear();
+
   const pipelines = await db.agentPipeline.findMany({
     where: {
       enabled: true,
@@ -307,11 +395,12 @@ export async function schedulePipelines(): Promise<void> {
   for (const pipeline of pipelines) {
     if (!pipeline.schedule) continue;
     try {
-      cron.schedule(pipeline.schedule, () => {
+      const job = cron.schedule(pipeline.schedule, () => {
         runPipeline(pipeline.id).catch(err => {
           console.error(`[Orchestrator] Scheduled pipeline ${pipeline.name} failed:`, err);
         });
       });
+      pipelineCronJobs.set(pipeline.id, job);
     } catch (err) {
       console.error(`[Orchestrator] Failed to schedule pipeline ${pipeline.name}:`, err);
     }

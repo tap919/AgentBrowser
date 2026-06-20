@@ -6,6 +6,7 @@ import {
   HelpCircle, Wifi, WifiOff, Search, Download, Key,
 } from 'lucide-react';
 import VibeServeToolsPanel from './VibeServeToolsPanel';
+import MutlyPanel from './MutlyPanel';
 import RepoRankPanel from './RepoRankPanel';
 import { apiPost, isAuthConfigured } from '@/lib/api-client';
 
@@ -295,6 +296,9 @@ export default function ServiceDashboard() {
           })}
         </div>
       )}
+
+      {/* Mutly Pipeline Panel */}
+      <MutlyPanel />
 
       {/* VibeServe Tools Panel */}
       <VibeServeToolsPanel />

@@ -5,7 +5,8 @@ import * as os from 'os';
 
 const HOME_DIR = os.homedir();
 const CODING_TRIO = path.join(HOME_DIR, 'Desktop', 'Coding Trio');
-const MUTLY_DIR = path.join(CODING_TRIO, 'Mutly-Daemon-Agent');
+const APP_DIR = path.resolve(__dirname, '..');
+const MUTLY_DIR = path.join(APP_DIR, 'Mutly-Daemon-Agent');
 
 export interface ProjectAnalysis {
   projectName: string;

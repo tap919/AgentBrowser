@@ -12,7 +12,6 @@ Falls back gracefully when crewai is not installed.
 from __future__ import annotations
 
 import os
-from typing import Any
 
 CREWAI_AVAILABLE = False
 try:

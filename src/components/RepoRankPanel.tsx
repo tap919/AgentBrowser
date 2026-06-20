@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   FileText, ShieldCheck, Activity,
-  Plus, Loader2, CheckCircle, XCircle,
+  Plus, Loader2, XCircle,
   TrendingUp, Copy, RefreshCw,
 } from 'lucide-react';
 import { apiPost } from '@/lib/api-client';
@@ -70,13 +70,18 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function RepoRankPanel() {
-  const [tab, setTab] = useState<'briefs' | 'milestones' | 'gates' | 'drift'>('briefs');
+  const [tab, setTab] = useState<'briefs' | 'milestones' | 'gates' | 'drift' | 'analysis'>('briefs');
   const [briefs, setBriefs] = useState<Brief[]>([]);
   const [selectedBrief, setSelectedBrief] = useState<Brief | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [gates, setGates] = useState<Gate[]>([]);
   const [driftResult, setDriftResult] = useState<unknown>(null);
   const [scanResult, setScanResult] = useState<unknown>(null);
+
+  const [repoUrl, setRepoUrl] = useState('');
+  const [repoBranch, setRepoBranch] = useState('main');
+  const [rankResult, setRankResult] = useState<{ rank?: number; score?: number; summary?: string } | null>(null);
+  const [analysisStatus, setAnalysisStatus] = useState<ReqStatus>('idle');
 
   const [briefStatus, setBriefStatus] = useState<ReqStatus>('idle');
   const [milestoneStatus, setMilestoneStatus] = useState<ReqStatus>('idle');
@@ -179,10 +184,10 @@ export default function RepoRankPanel() {
 
       {/* Tabs */}
       <div className="flex gap-1 px-4 pt-3">
-        {(['briefs', 'milestones', 'gates', 'drift'] as const).map(t => (
+        {(['briefs', 'milestones', 'gates', 'drift', 'analysis'] as const).map(t => (
           <button key={t} type="button" onClick={() => setTab(t)}
             className={`px-3 py-1 rounded-lg text-[10px] font-semibold transition-all ${tab === t ? 'bg-emerald-500/15 text-emerald-400' : 'text-muted-foreground hover:text-foreground'}`}>
-            {t === 'briefs' ? 'Briefs' : t === 'milestones' ? 'Milestones' : t === 'gates' ? 'Gates' : 'Drift'}
+            {t === 'briefs' ? 'Briefs' : t === 'milestones' ? 'Milestones' : t === 'gates' ? 'Gates' : t === 'drift' ? 'Drift' : 'Analysis'}
           </button>
         ))}
       </div>
@@ -316,6 +321,73 @@ export default function RepoRankPanel() {
                     </div>
                   ))
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Analysis Tab ─── */}
+        {tab === 'analysis' && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-2">
+              <input type="text" value={repoUrl} onChange={e => setRepoUrl(e.target.value.slice(0, 1000))}
+                placeholder="Repository URL (e.g. https://github.com/user/repo)" maxLength={1000}
+                className="w-full bg-background/20 border border-border/30 rounded-lg px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50" />
+              <div className="flex items-center gap-2">
+                <input type="text" value={repoBranch} onChange={e => setRepoBranch(e.target.value.slice(0, 100))}
+                  placeholder="Branch (default: main)" maxLength={100}
+                  className="flex-1 bg-background/20 border border-border/30 rounded-lg px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50" />
+                <button type="button" onClick={async () => {
+                  if (!repoUrl.trim()) return;
+                  setAnalysisStatus('loading'); setRankResult(null); setError(null);
+                  try {
+                    const res = await fetch('/api/reporank/rank', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ repoUrl: repoUrl.trim(), branch: repoBranch.trim() || 'main' }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+                    setRankResult(data);
+                    setAnalysisStatus('success');
+                  } catch (err: unknown) {
+                    setError(err instanceof Error ? err.message : 'Analysis failed');
+                    setAnalysisStatus('error');
+                  }
+                }} disabled={analysisStatus === 'loading' || !repoUrl.trim()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/30 transition-all disabled:opacity-50">
+                  {analysisStatus === 'loading' ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />}
+                  Analyze
+                </button>
+              </div>
+            </div>
+
+            {analysisStatus === 'loading' && (
+              <div className="flex items-center gap-2 p-3 text-center justify-center rounded-xl bg-background/10 border border-border/20">
+                <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+                <span className="text-xs text-muted-foreground">Analyzing repository...</span>
+              </div>
+            )}
+
+            {rankResult && (
+              <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">Rank</span>
+                    <span className="text-lg font-bold text-emerald-400">{rankResult.rank ?? '—'}</span>
+                  </div>
+                  <div className="w-px h-6 bg-border/30" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">Score</span>
+                    <span className="text-lg font-bold text-foreground">{rankResult.score ?? '—'}</span>
+                  </div>
+                </div>
+                {rankResult.summary && (
+                  <p className="text-xs text-foreground/80 leading-relaxed">{rankResult.summary}</p>
+                )}
+                <div className="flex items-center gap-2 pt-1">
+                  <CopyButton text={JSON.stringify(rankResult, null, 2)} />
+                </div>
               </div>
             )}
           </div>

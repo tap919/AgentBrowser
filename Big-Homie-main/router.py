@@ -4,7 +4,7 @@ Architect (reasoning) / Worker (volume) / Coder (development) specialization
 With thought logging, transparent routing decisions, and Karpathy temperature calibration
 """
 from enum import Enum
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from loguru import logger
 from llm_gateway import LLMGateway, Provider, TaskType

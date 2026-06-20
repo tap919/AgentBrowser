@@ -132,6 +132,90 @@ export const AUTONOMOUS_AGENT_PRESETS: ScheduledAgent[] = [
       autoCreateJobs: true,
     },
   }),
+  createAgent({
+    id: 'learning-digest',
+    name: 'Learning Digest',
+    description: 'Searches indexed coding books daily and produces a learning digest with key passages, code snippets, and reading recommendations.',
+    cronExpression: '0 8 * * *',
+    skills: ['coding-tools', 'knowledge-search'],
+    config: {
+      tools: ['code-review-assistant', 'ts-react-patterns', 'python-best-practices', 'distributed-systems', 'security-patterns'],
+      queries: {
+        typescript: 'TypeScript patterns generics async await error handling',
+        react: 'React hooks components state management patterns',
+        python: 'Python algorithms data structures optimization',
+        distributed: 'distributed systems consensus replication consistency',
+        security: 'security authentication encryption vulnerability scanning',
+      },
+      category: 'Computers',
+      maxResults: 3,
+      outputTypes: ['code-snippets', 'key-concepts', 'reading-list'],
+    },
+  }),
+  createAgent({
+    id: 'code-review-assistant',
+    name: 'Code Review Assistant',
+    description: 'Runs daily code review pattern checks against indexed books, stores findings for pipeline use.',
+    cronExpression: '0 9 * * *',
+    skills: ['code-review-assistant'],
+    config: {
+      query: 'code review checklist testing best practices',
+      category: 'Computers',
+      maxResults: 5,
+      outputTypes: ['review-checklist', 'testing-patterns', 'quality-metrics'],
+    },
+  }),
+  createAgent({
+    id: 'business-book-insights',
+    name: 'Business Book Insights',
+    description: 'Reviews indexed business books weekly for strategic frameworks, marketing tactics, and growth case studies.',
+    cronExpression: '0 10 * * 1',
+    skills: ['knowledge-search', 'business-strategy'],
+    config: {
+      queries: {
+        strategy: 'business strategy competitive advantage market positioning',
+        marketing: 'marketing growth customer acquisition branding',
+        analytics: 'business analytics metrics KPIs data-driven decision making',
+      },
+      category: 'Business',
+      maxResults: 3,
+      outputTypes: ['frameworks', 'case-studies', 'action-items'],
+    },
+  }),
+  createAgent({
+    id: 'math-fundamentals-review',
+    name: 'Math Fundamentals Review',
+    description: 'Reviews indexed math/statistics books weekly for relevant formulas, probability concepts, and data analysis methods.',
+    cronExpression: '0 9 * * 3',
+    skills: ['knowledge-search', 'math-reference'],
+    config: {
+      queries: {
+        statistics: 'statistics probability regression Bayesian hypothesis testing',
+        linearAlgebra: 'linear algebra matrices vectors eigenvalues decompositions',
+        calculus: 'calculus derivatives gradients optimization partial derivatives',
+      },
+      category: 'Math',
+      maxResults: 2,
+      outputTypes: ['formulas', 'concepts', 'applications'],
+    },
+  }),
+  createAgent({
+    id: 'finance-book-analysis',
+    name: 'Finance Book Analysis',
+    description: 'Reviews indexed financial books daily for investment frameworks, risk analysis methods, and market analysis context.',
+    cronExpression: '0 6 * * *',
+    skills: ['knowledge-search', 'financial-analysis'],
+    config: {
+      queries: {
+        investing: 'investing valuation portfolio diversification risk management',
+        analysis: 'financial analysis ratios statements discounted cash flow',
+        markets: 'market efficiency behavioral finance trading strategies',
+      },
+      category: 'financial',
+      maxResults: 2,
+      outputTypes: ['frameworks', 'metrics', 'risk-factors'],
+    },
+  }),
 ];
 
 export function describeCron(cronExpression: string): string {
@@ -148,6 +232,14 @@ export function describeCron(cronExpression: string): string {
       return 'Weekly Monday at 09:00';
     case '0 6 * * 0':
       return 'Weekly Sunday at 06:00';
+    case '0 8 * * *':
+      return 'Daily at 08:00';
+    case '0 10 * * 1':
+      return 'Weekly Monday at 10:00';
+    case '0 9 * * 3':
+      return 'Weekly Wednesday at 09:00';
+    case '0 6 * * *':
+      return 'Daily at 06:00';
     default:
       return cronExpression;
   }
@@ -172,10 +264,7 @@ export function estimateNextRun(cronExpression: string, from = new Date()): stri
     return undefined;
   }
 
-  const [minuteField, hourField, dayOfMonth, month, dayOfWeek] = parts;
-  if (dayOfMonth !== '*' || month !== '*' || dayOfWeek !== '*') {
-    return undefined;
-  }
+  const [minuteField, hourField, dayOfMonthField, monthField, dayOfWeekField] = parts;
 
   const minutes = parseNumberList(minuteField, 0, 59);
   const hours = parseNumberList(hourField, 0, 23);
@@ -183,12 +272,53 @@ export function estimateNextRun(cronExpression: string, from = new Date()): stri
     return undefined;
   }
 
+  // Parse day-of-week (0=Sunday or 1=Monday, both common)
+  const dayOfWeekSet = dayOfWeekField === '*'
+    ? new Set([0, 1, 2, 3, 4, 5, 6])
+    : new Set(
+        dayOfWeekField.split(',').flatMap(v => {
+          const range = v.split('-').map(Number);
+          if (range.length === 2 && !isNaN(range[0]) && !isNaN(range[1])) {
+            return Array.from({ length: range[1] - range[0] + 1 }, (_, i) => range[0] + i);
+          }
+          const n = Number(v);
+          return isNaN(n) ? [] : [n];
+        })
+      );
+
+  // Parse day-of-month
+  const dayOfMonthSet = dayOfMonthField === '*'
+    ? new Set(Array.from({ length: 31 }, (_, i) => i + 1))
+    : dayOfMonthField === '*'
+      ? null
+      : new Set(dayOfMonthField.split(',').map(Number));
+
+  // Parse month
+  const monthSet = monthField === '*'
+    ? new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    : new Set(monthField.split(',').map(Number));
+
   const next = new Date(from);
   next.setSeconds(0, 0);
 
-  for (let dayOffset = 0; dayOffset < 8; dayOffset++) {
+  for (let dayOffset = 0; dayOffset < 60; dayOffset++) {
     const base = new Date(next);
     base.setDate(base.getDate() + dayOffset);
+
+    // Check day-of-month constraint (1-indexed)
+    const dom = base.getDate();
+    if (dayOfMonthField !== '*') {
+      const allowedDom = new Set(dayOfMonthField.split(',').map(Number));
+      if (!allowedDom.has(dom)) continue;
+    }
+
+    // Check day-of-week constraint (0=Sunday, matches Date.getDay())
+    const dow = base.getDay();
+    if (!dayOfWeekSet.has(dow)) continue;
+
+    // Check month constraint (1-indexed, matches Date.getMonth() + 1)
+    const m = base.getMonth() + 1;
+    if (!monthSet.has(m)) continue;
 
     for (const hour of hours) {
       for (const minute of minutes) {
@@ -272,7 +402,62 @@ export function runPresetAgent(agent: ScheduledAgent): Record<string, unknown> |
         maxRecommendations: agent.config.maxRecommendations,
         autoCreate: agent.config.autoCreateJobs,
       };
+    case 'learning-digest':
+    case 'business-book-insights':
+    case 'math-fundamentals-review':
+    case 'finance-book-analysis':
+      return null; // Handled by runPresetAgentAsync for dynamic book search
     default:
       return null;
   }
+}
+
+export async function runPresetAgentAsync(agent: ScheduledAgent): Promise<Record<string, unknown> | null> {
+  // Handle coding tool agents (code-review-assistant)
+  const tools = agent.config.tools as string[] | undefined;
+  if (tools && tools.length > 0) {
+    const { executeMultipleCodingTools } = await import('@/lib/coding/executor');
+    const results = await executeMultipleCodingTools(
+      tools.map(tool => ({
+        skill: tool as never,
+        query: agent.config.query as string | undefined,
+        limit: (agent.config.maxResults as number) ?? 5,
+        params: { category: agent.config.category as string || 'Computers' },
+      })),
+    );
+    return {
+      dynamic: true,
+      type: 'coding-tools',
+      totalTools: tools.length,
+      results,
+      summary: `Executed ${tools.length} coding tool(s) from indexed books`,
+    };
+  }
+
+  const queries = agent.config.queries as Record<string, string> | undefined;
+  if (!queries || Object.keys(queries).length === 0) {
+    return null;
+  }
+
+  const { searchBooks } = await import('@/lib/books');
+  const category = agent.config.category as string | undefined;
+  const maxResults = (agent.config.maxResults as number) ?? 3;
+
+  const results: Record<string, unknown> = {};
+  for (const [topic, query] of Object.entries(queries)) {
+    try {
+      const hits = await searchBooks(query as string, { category, limit: maxResults });
+      results[topic] = hits;
+    } catch {
+      results[topic] = { error: `Search failed for query: ${query}` };
+    }
+  }
+
+  return {
+    dynamic: true,
+    category: category ?? 'all',
+    totalQueries: Object.keys(queries).length,
+    results,
+    summary: `Searched ${Object.keys(queries).length} topics in ${category ?? 'all'} books via knowledge-search`,
+  };
 }

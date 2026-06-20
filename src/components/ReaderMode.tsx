@@ -3,20 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { BookOpen, Monitor } from 'lucide-react';
 import { Readability, isProbablyReaderable } from '@mozilla/readability';
-
-function sanitizeArticleHtml(content: string): string {
-  return content
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
-    .replace(/<object[\s\S]*?>[\s\S]*?<\/object>/gi, '')
-    .replace(/<embed[\s\S]*?>/gi, '')
-    .replace(/<link[\s\S]*?>/gi, '')
-    .replace(/\sON[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/\s(href|src)\s*=\s*(["'])\s*javascript:[\s\S]*?\2/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/data:/gi, '');
-}
+import DOMPurify from 'dompurify';
 
 interface ReaderModeProps {
   url?: string;
@@ -70,7 +57,7 @@ export default function ReaderMode({ html }: ReaderModeProps) {
       if (parsed) {
         setArticle({
           ...(parsed as ParsedArticle),
-          content: sanitizeArticleHtml(parsed.content || ''),
+          content: DOMPurify.sanitize(parsed.content || ''),
         });
       } else {
         setError('Could not parse article content');

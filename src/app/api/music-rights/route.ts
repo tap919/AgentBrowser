@@ -253,6 +253,7 @@ async function postHandler(req: Request) {
         const hfaPass = body.hfaPass as string;
         const publisherName = body.publisherName as string;
         const publisherIpi = body.publisherIpi as string;
+        const publisherPNumber = body.publisherPNumber as string || process.env.HFA_PUBLISHER_NUMBER || '';
         const catalog = body.catalog as Record<string, unknown>;
 
         await logToClient('Starting HFA bulk upload session...');
@@ -260,7 +261,7 @@ async function postHandler(req: Request) {
         const submissionRef: { current: Record<string, unknown> | null } = { current: null };
         await runAutomationScript(
           'hfa-upload.ts',
-          { email: hfaEmail, password: hfaPass, publisherName, publisherIpi, catalog },
+          { email: hfaEmail, password: hfaPass, publisherName, publisherIpi, publisherPNumber, catalog },
           logToClient,
           (type, data) => {
             if (type === 'hfa-submission') {
@@ -309,6 +310,13 @@ interface CatalogSong {
   mlcCode?: string | null;
   writers?: string | string[] | null;
   created?: string | null;
+  // HFA-enrichment fields
+  iswc?: string | null;
+  isrc?: string | null;
+  ipi?: string | null;
+  artistName?: string | null;
+  albumTitle?: string | null;
+  publisherName?: string | null;
 }
 
 function mergeCatalogs(ascap: Record<string, unknown>[], mlc: Record<string, unknown>[]) {
@@ -332,6 +340,12 @@ function mergeCatalogs(ascap: Record<string, unknown>[], mlc: Record<string, unk
       mlcCode: match?.songCode ?? null,
       writers: match?.writers ?? song.writers ?? null,
       created: song.created ?? null,
+      // HFA enrichment — prefer MLC ISRC if matched, else ASCAP
+      iswc: song.iswc ?? null,
+      isrc: match?.isrc ?? null,
+      ipi: song.ipi ?? null,
+      artistName: match?.artistName ?? null,
+      albumTitle: match?.albumTitle ?? null,
     });
     if (match && key) {
       mlcIndex.delete(key);
@@ -345,6 +359,11 @@ function mergeCatalogs(ascap: Record<string, unknown>[], mlc: Record<string, unk
       mlcCode: song.songCode ?? null,
       writers: song.writers ?? null,
       created: null,
+      iswc: null,
+      isrc: song.isrc ?? null,
+      ipi: null,
+      artistName: song.artistName ?? null,
+      albumTitle: song.albumTitle ?? null,
     });
   }
 

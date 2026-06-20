@@ -5,7 +5,6 @@ Provides visual feedback during long-running operations
 import time
 from typing import Optional, Callable
 from enum import Enum
-from datetime import datetime
 from loguru import logger
 
 class ProgressState(str, Enum):

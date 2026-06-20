@@ -9,17 +9,14 @@ The Dream System operates during idle periods to:
 - Build and optimize knowledge graphs
 - Prune stale or low-value memories
 """
-import asyncio
 import json
 import uuid
-from datetime import datetime, timedelta, time as time_of_day
-from typing import Dict, List, Any, Optional, Set, Tuple
+from datetime import datetime, time as time_of_day
+from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 from collections import defaultdict
-from pathlib import Path
 from loguru import logger
-from config import settings
 from memory import memory
 
 

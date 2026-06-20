@@ -3,7 +3,7 @@ Base Layer 2 (Ethereum) Integration
 Provides blockchain interaction capabilities on Base L2
 """
 import asyncio
-from typing import Dict, Optional, Any
+from typing import Optional, Any
 from dataclasses import dataclass
 from loguru import logger
 from config import settings

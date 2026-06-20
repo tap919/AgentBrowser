@@ -55,6 +55,8 @@ describe('usePipeline', () => {
 
   it('handlePauseResume toggles isPaused', () => {
     const { result } = renderHook(() => usePipeline());
+    // handlePauseResume only toggles when pipeline is running
+    act(() => result.current.setState(prev => ({ ...prev, pipelineRunning: true })));
     expect(result.current.state.isPaused).toBe(false);
     act(() => result.current.handlePauseResume());
     expect(result.current.state.isPaused).toBe(true);

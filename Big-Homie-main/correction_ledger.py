@@ -4,13 +4,14 @@ Learns from user corrections to avoid repeating mistakes
 """
 import json
 from datetime import datetime
-from pathlib import Path
 from typing import List, Dict, Optional
 from loguru import logger
 from config import settings
 
 class CorrectionLedger:
     """Tracks and learns from user corrections"""
+
+    MAX_CORRECTIONS = 500
 
     def __init__(self):
         self.ledger_path = settings.data_dir / "correction_ledger.json"
@@ -30,8 +31,15 @@ class CorrectionLedger:
         else:
             self.corrections = []
 
+    def _evict_if_needed(self):
+        """Evict oldest corrections when over max size"""
+        if len(self.corrections) > self.MAX_CORRECTIONS:
+            self.corrections.sort(key=lambda x: x.get("timestamp", ""))
+            self.corrections = self.corrections[-self.MAX_CORRECTIONS:]
+
     def save(self):
         """Save corrections to disk"""
+        self._evict_if_needed()
         try:
             with open(self.ledger_path, 'w', encoding='utf-8') as f:
                 json.dump(self.corrections, f, indent=2, ensure_ascii=False)

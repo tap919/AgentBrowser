@@ -58,7 +58,7 @@ class Settings(BaseSettings):
 
     # Server
     server_host: str = "127.0.0.1"
-    server_port: int = 9000
+    server_port: int = 8888
     orchestrator_secret: str = ""  # MUST be set in production
 
     # UI Settings

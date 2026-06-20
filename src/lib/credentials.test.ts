@@ -13,64 +13,64 @@ describe('credentials store', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns defaults when storage is empty or invalid', () => {
-    expect(getCredentials()).toEqual({
+  it('returns defaults when storage is empty or invalid', async () => {
+    expect(await getCredentials()).toEqual({
       githubToken: '',
       vercelToken: '',
       supabaseUrl: '',
       supabaseKey: '',
     });
 
-    localStorage.setItem('ab_credentials_enc', 'corrupt-data');
-    expect(getCredentials().githubToken).toBe('');
+    localStorage.setItem('ab_credentials_enc_v2', 'corrupt-data');
+    expect((await getCredentials()).githubToken).toBe('');
   });
 
-  it('saves and clears credentials while notifying listeners', () => {
+  it('saves and clears credentials while notifying listeners', async () => {
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
 
-    saveCredentials({
+    await saveCredentials({
       githubToken: 'ghp_12345678901',
       vercelToken: 'vercel-token',
       supabaseUrl: 'https://example.supabase.co',
       supabaseKey: 'supabase-key',
     });
 
-    expect(getCredentials().vercelToken).toBe('vercel-token');
+    expect((await getCredentials()).vercelToken).toBe('vercel-token');
 
     clearCredentials();
 
-    expect(getCredentials().githubToken).toBe('');
+    expect((await getCredentials()).githubToken).toBe('');
     expect(dispatchSpy).toHaveBeenCalledTimes(2);
   });
 
-  it('detects whether a usable github token exists', () => {
-    expect(hasGitHubToken()).toBe(false);
+  it('detects whether a usable github token exists', async () => {
+    expect(await hasGitHubToken()).toBe(false);
 
-    saveCredentials({
+    await saveCredentials({
       githubToken: 'ghp_1234567890123456789012345678901234567890',
       vercelToken: '',
       supabaseUrl: '',
       supabaseKey: '',
     });
 
-    expect(hasGitHubToken()).toBe(true);
+    expect(await hasGitHubToken()).toBe(true);
   });
 
-  it('stored value is not plaintext', () => {
-    saveCredentials({
+  it('stored value is not plaintext', async () => {
+    await saveCredentials({
       githubToken: 'ghp_secret_token_12345',
       vercelToken: '',
       supabaseUrl: '',
       supabaseKey: '',
     });
 
-    const raw = localStorage.getItem('ab_credentials_enc');
+    const raw = localStorage.getItem('ab_credentials_enc_v2');
     expect(raw).not.toBeNull();
     expect(raw).not.toContain('ghp_secret_token_12345');
     expect(raw).not.toContain('githubToken');
   });
 
-  it('can round-trip encrypt/decrypt', () => {
+  it('can round-trip encrypt/decrypt', async () => {
     const creds = {
       githubToken: 'ghp_roundtrip_test',
       vercelToken: 'vercel_abc123',
@@ -78,14 +78,14 @@ describe('credentials store', () => {
       supabaseKey: 'sb_key_xyz',
     };
 
-    saveCredentials(creds);
-    const loaded = getCredentials();
+    await saveCredentials(creds);
+    const loaded = await getCredentials();
     expect(loaded).toEqual(creds);
   });
 
-  it('corrupt data returns defaults (no crash)', () => {
-    localStorage.setItem('ab_credentials_enc', '!!!not-valid-base64!!!');
-    const result = getCredentials();
+  it('corrupt data returns defaults (no crash)', async () => {
+    localStorage.setItem('ab_credentials_enc_v2', '!!!not-valid-base64!!!');
+    const result = await getCredentials();
     expect(result.githubToken).toBe('');
   });
 });

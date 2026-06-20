@@ -13,10 +13,10 @@ services:
     container_name: claw-protect
     restart: unless-stopped
     ports:
-      - "${CLAW_PORT:-3003}:3000"
+      - "${CLAW_PORT:-3333}:3333"
     environment:
       NODE_ENV: production
-      CLAW_PORT: "3000"
+      CLAW_PORT: "3333"
       STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY}"
       CLAW_STRIPE_WEBHOOK_SECRET: "${CLAW_STRIPE_WEBHOOK_SECRET}"
       CLAW_SUCCESS_URL: "${CLAW_SUCCESS_URL:-https://clawprotect.dev/dashboard?success=true}"
@@ -27,7 +27,7 @@ services:
       # Persist API keys and usage logs across restarts
       - claw-data:/app/data
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3333/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -37,7 +37,7 @@ services:
       - "traefik.http.routers.claw-protect.rule=Host(`api.clawprotect.dev`)"
       - "traefik.http.routers.claw-protect.tls=true"
       - "traefik.http.routers.claw-protect.tls.certresolver=letsencrypt"
-      - "traefik.http.services.claw-protect.loadbalancer.server.port=3000"
+      - "traefik.http.services.claw-protect.loadbalancer.server.port=3333"
 
 volumes:
   claw-data:

@@ -6,7 +6,7 @@ import base64
 import xml.sax.saxutils as _xml
 from urllib.parse import urlparse as _urlparse
 import httpx
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from dataclasses import dataclass
 from loguru import logger
 from config import settings

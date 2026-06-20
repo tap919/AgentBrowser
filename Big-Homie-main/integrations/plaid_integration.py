@@ -3,7 +3,7 @@ Plaid Banking Integration
 Connects to bank accounts for balance/transaction data and ACH transfers
 """
 import httpx
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from dataclasses import dataclass
 from loguru import logger
 from config import settings

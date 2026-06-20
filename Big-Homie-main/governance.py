@@ -7,7 +7,6 @@ import asyncio
 import json
 import os
 import hashlib
-import signal
 import sqlite3
 import sys
 import time
@@ -572,12 +571,16 @@ class SandboxedExecution:
             details={"code_length": len(code)}
         )
 
-        # Safety: check for blocked imports
-        for blocked in cfg.blocked_imports:
-            if f"import {blocked}" in code or f"from {blocked}" in code:
+        # Safety: check for blocked imports and dangerous built-ins
+        dangerous_patterns = [f"import {b}" for b in cfg.blocked_imports]
+        dangerous_patterns += [f"from {b}" for b in cfg.blocked_imports]
+        dangerous_patterns += ["__import__(", "exec(", "eval(", "compile(", "open(", "__builtins__"]
+        lower_code = code.lower()
+        for pattern in dangerous_patterns:
+            if pattern.lower() in lower_code:
                 return SandboxResult(
                     success=False,
-                    error=f"Blocked import: {blocked}",
+                    error=f"Blocked pattern: {pattern}",
                     execution_time_ms=(time.time() - start) * 1000
                 )
 
@@ -671,6 +674,10 @@ import sys
 import builtins
 {chr(10).join(restrictions)}
 {import_checks}
+# Block exec/eval/compile at the builtins level
+_builtins = vars(builtins)
+for _dangerous in ('exec', 'eval', 'compile', '__import__'):
+    _builtins[_dangerous] = None
 try:
 {chr(10).join('    ' + line for line in code.splitlines())}
 except Exception as e:

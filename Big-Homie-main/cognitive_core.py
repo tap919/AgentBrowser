@@ -319,7 +319,7 @@ When you have the final answer, respond with:
         """Execute an action in the ReAct loop and return observation"""
         try:
             from mcp_integration import mcp
-            from mcp_integration import ToolCall, ToolResult
+            from mcp_integration import ToolCall
 
             tool_call = ToolCall(
                 tool_name=action,
@@ -586,7 +586,6 @@ Respond in JSON:
         reasoning_paths = []
 
         # Generate samples with varying temperatures for diversity
-        from llm_gateway import TaskType
         temp_step = (temperature_range[1] - temperature_range[0]) / max(num_samples - 1, 1)
 
         tasks = []

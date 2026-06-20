@@ -3,6 +3,7 @@ import { EventEmitter } from 'events';
 import {
   estimateNextRun,
   runPresetAgent,
+  runPresetAgentAsync,
   type ExecutionLog,
   type ScheduledAgent,
   type SchedulerStats,
@@ -20,6 +21,8 @@ import { securityMiddleware } from '@/lib/security-middleware';
 import { createUpgradeJob } from '@/lib/autonomous-store';
 import { writeMemory, searchMemory } from '@/lib/agent-memory';
 import { agentEventBus } from '@/lib/agent-event-bus';
+import { registerBuiltInWorkflows, listWorkflows, runWorkflow } from '@/lib/workflow-engine';
+import { bigHomie } from '@/lib/big-homie-client';
 
 interface CronJob {
   stop: () => void;
@@ -71,6 +74,9 @@ class AgentScheduler extends EventEmitter {
 
     this.initializing = (async () => {
       try {
+        // Register built-in workflows so the scheduler and API both see them
+        registerBuiltInWorkflows();
+
         await ensureAutonomousSeedData();
         const agents = await listAutonomousAgents();
         const logs = await listAutonomousRuns(undefined, this.MAX_LOGS);
@@ -90,9 +96,18 @@ class AgentScheduler extends EventEmitter {
           this.cronJobs.forEach(job => job.stop());
         }
 
+        // Recover missed runs: catch up agents that should have run while down
+        await this.recoverMissedRuns();
+
+        // Start periodic health check cron
+        await this.startHealthCheckCron();
+        // Start periodic memory cleanup cron
+        await this.startMemoryCleanupCron();
+
         this.initialized = true;
       } catch (error) {
         this.initializing = null;
+        this.initialized = false;
         throw error;
       }
     })();
@@ -129,7 +144,10 @@ class AgentScheduler extends EventEmitter {
       return inFlight;
     }
 
-    await this.initialize();
+    // Wait for initialization if in progress, skip if already done
+    if (!this.initialized) {
+      await this.initialize();
+    }
     const agent = this.agents.get(agentId);
     if (!agent) {
       throw new Error(`Agent ${agentId} not found`);
@@ -255,6 +273,17 @@ class AgentScheduler extends EventEmitter {
   }
 
   private async runAgentSkills(agent: ScheduledAgent): Promise<unknown> {
+    // Try async preset first (handles dynamic book search)
+    const asyncOutput = await runPresetAgentAsync(agent);
+    if (asyncOutput) {
+      return {
+        preset: true,
+        ...asyncOutput,
+        executedSkills: agent.skills,
+      };
+    }
+
+    // Fall back to sync preset (handles static agents like content-machine, etc.)
     const presetOutput = runPresetAgent(agent);
     if (presetOutput) {
       return {
@@ -312,7 +341,45 @@ class AgentScheduler extends EventEmitter {
           agentId: 'self-upgrade-scanner',
           ttl: 604800,
         });
-      } catch { /* non-critical */ }
+      } catch (err) { console.error('[scheduler] writeMemory upgrade-scanner', err); }
+    }
+
+    // Learning Digest → any: store book search results for other agents to consume
+    if (completed.id === 'learning-digest' && output) {
+      try {
+        await writeMemory({
+          namespace: 'book-knowledge',
+          key: `learning-digest:${Date.now()}`,
+          value: { timestamp: new Date().toISOString(), output },
+          agentId: 'learning-digest',
+          ttl: 86400,
+        });
+      } catch (err) { console.error('[scheduler] writeMemory learning-digest', err); }
+    }
+
+    // Business Book Insights → Business Daily: when insights are generated, trigger daily routine
+    if (completed.id === 'business-book-insights' && output) {
+      const bizAgent = this.agents.get('business-daily');
+      if (bizAgent?.enabled) {
+        agentEventBus.emit('trigger:business-from-insights', `scheduler:${completed.id}`, {
+          sourceAgent: completed.id,
+          insights: output,
+          suggestedAction: 'check-budgets',
+        }, true);
+      }
+    }
+
+    // Finance Book Analysis → Memory: store analysis for market-intelligence agent
+    if (completed.id === 'finance-book-analysis' && output) {
+      try {
+        await writeMemory({
+          namespace: 'financial-insights',
+          key: `finance-analysis:${Date.now()}`,
+          value: { timestamp: new Date().toISOString(), output },
+          agentId: 'finance-book-analysis',
+          ttl: 43200,
+        });
+      } catch (err) { console.error('[scheduler] writeMemory finance-analysis', err); }
     }
   }
 
@@ -323,7 +390,7 @@ class AgentScheduler extends EventEmitter {
       if (plan.autoExecute) {
         try {
           await createUpgradeJob(target.targetId, { autoCreated: true });
-          console.log(`[AgentScheduler] Auto-created upgrade job for ${target.targetName}`);
+          // Auto-created upgrade job for ${target.targetName}
         } catch (err) {
           console.error(`[AgentScheduler] Failed to create upgrade job for ${target.targetName}:`, err);
         }
@@ -332,25 +399,14 @@ class AgentScheduler extends EventEmitter {
   }
 
   private async executeSkill(skill: string, config: Record<string, unknown>): Promise<unknown> {
-    try {
-      const url = process.env.NEXT_PUBLIC_BIG_HOMIE_URL || 'http://localhost:8888';
-      const response = await fetch(`${url}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skill, config }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Big Homie responded with ${response.status}: ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error) {
-      return {
-        status: 'error',
-        skill,
-        note: `Failed to execute skill on Big Homie: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      };
+    const isHealthy = await bigHomie.checkHealth();
+    if (!isHealthy) {
+      console.warn(`[AgentScheduler] Big Homie unreachable — trying local fallback for skill ${skill}`);
+      const fallback = await runPresetAgentAsync({ id: 'fallback', skills: [skill], config, name: 'fallback', description: '', cronExpression: '', status: 'idle', executionCount: 0, successCount: 0, failureCount: 0, enabled: false });
+      if (fallback) return fallback;
+      return { status: 'error', skill, note: 'Big Homie down and no local fallback available' };
     }
+    return bigHomie.executeSkill(skill, config);
   }
 
   private addLog(log: ExecutionLog): void {
@@ -469,9 +525,78 @@ class AgentScheduler extends EventEmitter {
     };
   }
 
+  private async recoverMissedRuns(): Promise<void> {
+    const now = new Date();
+    const missed: string[] = [];
+    for (const [id, agent] of this.agents) {
+      if (agent.enabled && agent.nextRun && new Date(agent.nextRun) < now) {
+        missed.push(id);
+      }
+    }
+    if (missed.length > 0) {
+      // Recovering missed agent runs: ${missed.join(', ')}
+      await Promise.allSettled(missed.map(id => this.executeAgent(id)));
+    }
+  }
+
+  private healthCheckCron: CronJob | null = null;
+  private memoryCleanupCron: CronJob | null = null;
+
+  async startHealthCheckCron(): Promise<void> {
+    if (process.env.DISABLE_HEALTH_CHECK_CRON === 'true') return;
+    const { default: cron } = await import('node-cron');
+    this.healthCheckCron = cron.schedule('*/5 * * * *', () => {
+      this.runHealthCheck().catch(err => console.error('[AgentScheduler] Health check error:', err));
+    }) as unknown as CronJob;
+  }
+
+  async startMemoryCleanupCron(): Promise<void> {
+    const { default: cron } = await import('node-cron');
+    this.memoryCleanupCron = cron.schedule('0 3 * * *', async () => {
+      const { cleanExpiredMemory } = await import('@/lib/agent-memory');
+      const removed = await cleanExpiredMemory();
+      if (removed > 0) {
+        process.stdout.write(`[AgentScheduler] Cleaned ${removed} expired memory entries\n`);
+      }
+    }) as unknown as CronJob;
+  }
+
+  private async runHealthCheck(): Promise<void> {
+    const { checkClawProtectHealth } = await import('@/lib/claw-protect-client');
+    const { checkMutlyHealth } = await import('@/lib/mutly-client');
+    const { checkVibeServeHealth } = await import('@/lib/vibeserve-client');
+    const { checkReporankHealth } = await import('@/lib/reporank-client');
+
+    const bh = await fetch(`${process.env.NEXT_PUBLIC_BIG_HOMIE_URL || 'http://localhost:8888'}/tools/status`, { signal: AbortSignal.timeout(3000) }).then(r => r.ok).catch(() => false);
+    const claw = await checkClawProtectHealth();
+    const mutly = await checkMutlyHealth();
+    const vibeserve = await checkVibeServeHealth();
+    const reporank = await checkReporankHealth();
+
+    const down: string[] = [];
+    if (!bh) down.push('big-homie');
+    if (!claw) down.push('claw-protect');
+    if (!mutly) down.push('mutly');
+    if (!vibeserve) down.push('vibeserve');
+    if (!reporank) down.push('reporank');
+
+    if (down.length > 0) {
+      console.warn(`[AgentScheduler] Subsystems down: ${down.join(', ')}`);
+      agentEventBus.emit('error', 'health-check', { down, timestamp: new Date().toISOString() }, true);
+    }
+  }
+
   shutdown(): void {
     this.cronJobs.forEach(job => job.stop());
     this.cronJobs.clear();
+    if (this.healthCheckCron) {
+      this.healthCheckCron.stop();
+      this.healthCheckCron = null;
+    }
+    if (this.memoryCleanupCron) {
+      this.memoryCleanupCron.stop();
+      this.memoryCleanupCron = null;
+    }
   }
 }
 

@@ -92,9 +92,9 @@ describe('service-hub', () => {
       }
     });
 
-    it('mutly is configured on port 3030 (no conflict with AgentBrowser)', () => {
+    it('mutly is configured on port 4000 (no conflict with AgentBrowser)', () => {
       const mutly = SERVICES.find(s => s.id === 'mutly');
-      expect(mutly?.port).toBe(3030);
+      expect(mutly?.port).toBe(4000);
     });
 
     it('vibeserve is on port 8000', () => {

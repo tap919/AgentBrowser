@@ -24,7 +24,8 @@ export type WorkflowStepType =
   | 'content-deploy'
   | 'upgrade-scan'
   | 'run-pipeline'
-  | 'knowledge-search';
+  | 'knowledge-search'
+  | 'coding-skill';
 
 export interface WorkflowStep {
   id: string;
@@ -41,7 +42,7 @@ export interface WorkflowDefinition {
   id: string;
   name: string;
   description: string;
-  category: 'monitoring' | 'business' | 'development' | 'security' | 'content' | 'research';
+  category: 'monitoring' | 'business' | 'development' | 'security' | 'content' | 'research' | 'knowledge';
   tags: string[];
   schedule?: string | null;
   steps: WorkflowStep[];
@@ -127,6 +128,15 @@ async function executeStep(
           break;
         }
 
+        case 'browser-scrape': {
+          const { executeBrowserTask, createBrowserTask } = await import('@/lib/browser-pipeline');
+          const result = await executeBrowserTask(createBrowserTask(
+            'reader', step.config.url as string,
+          ));
+          output = { ...result, scraped: true };
+          break;
+        }
+
         case 'business-skill': {
           const { executeBusinessSkill } = await import('@/lib/business/bridge');
           const result = await executeBusinessSkill({
@@ -176,7 +186,7 @@ async function executeStep(
 
         case 'generate-site': {
           const { generateSite } = await import('@/lib/generate-site');
-          output = generateSite({
+          output = await generateSite({
             name: step.config.name as string,
             description: step.config.description as string,
             type: step.config.type as string,
@@ -269,6 +279,17 @@ async function executeStep(
           const category = step.config.category as string | undefined;
           const limit = step.config.limit as number | undefined;
           output = await searchBooks(query, { category, limit });
+          break;
+        }
+
+        case 'coding-skill': {
+          const { executeCodingTool } = await import('@/lib/coding/executor');
+          output = await executeCodingTool({
+            skill: step.config.skill as never,
+            query: step.config.query as string | undefined,
+            limit: step.config.limit as number | undefined,
+            params: (step.config.params || {}) as Record<string, unknown>,
+          });
           break;
         }
 
@@ -534,6 +555,104 @@ const MUSIC_REVENUE_TRACKER: WorkflowDefinition = {
   ],
 };
 
+const BOOK_KNOWLEDGE_DIGEST: WorkflowDefinition = {
+  id: 'book-knowledge-digest',
+  name: 'Book Knowledge Digest',
+  description: 'Search indexed books across multiple domains (coding, business, math, finance) and store a consolidated knowledge digest in memory.',
+  category: 'knowledge',
+  tags: ['books', 'knowledge', 'research', 'learning'],
+  schedule: '0 8 * * *',
+  steps: [
+    { id: 'search-coding', type: 'knowledge-search', label: 'Search coding books', config: { query: 'TypeScript React Python patterns', category: 'Computers', limit: 3 }, dependsOn: [] },
+    { id: 'search-business', type: 'knowledge-search', label: 'Search business books', config: { query: 'business strategy marketing analytics', category: 'Business', limit: 3 }, dependsOn: [] },
+    { id: 'search-math', type: 'knowledge-search', label: 'Search math books', config: { query: 'statistics probability linear algebra', category: 'Math', limit: 2 }, dependsOn: [] },
+    { id: 'search-finance', type: 'knowledge-search', label: 'Search financial books', config: { query: 'investing valuation financial analysis', category: 'financial', limit: 2 }, dependsOn: [] },
+    { id: 'consolidate', type: 'memory-write', label: 'Store knowledge digest', config: { namespace: 'book-knowledge', key: '', value: {}, ttl: 86400 }, dependsOn: ['search-coding', 'search-business', 'search-math', 'search-finance'] },
+  ],
+};
+
+const CODE_REVIEW_WORKFLOW: WorkflowDefinition = {
+  id: 'code-review-workflow',
+  name: 'Code Review Assistant',
+  description: 'Searches Software Engineering at Google for code review best practices, testing strategies, and quality patterns. Run before any code review.',
+  category: 'development',
+  tags: ['code-review', 'testing', 'quality', 'google'],
+  schedule: null,
+  steps: [
+    { id: 'search-code-review', type: 'coding-skill', label: 'Search code review best practices', config: { skill: 'code-review-assistant', query: 'code review checklist best practices', params: { category: 'Computers' } }, dependsOn: [] },
+    { id: 'store-results', type: 'memory-write', label: 'Store code review findings', config: { namespace: 'coding-tools', key: 'code-review-findings', value: {}, ttl: 86400 }, dependsOn: ['search-code-review'] },
+  ],
+};
+
+const TS_REACT_WORKFLOW: WorkflowDefinition = {
+  id: 'ts-react-workflow',
+  name: 'TypeScript & React Patterns',
+  description: 'Searches The Complete Developer for TypeScript types, React components, hooks, and Next.js patterns. Run when working on frontend code.',
+  category: 'development',
+  tags: ['typescript', 'react', 'nextjs', 'frontend'],
+  schedule: null,
+  steps: [
+    { id: 'search-ts-react', type: 'coding-skill', label: 'Search TS/React patterns', config: { skill: 'ts-react-patterns', query: 'TypeScript types React components hooks patterns', params: { category: 'Computers' } }, dependsOn: [] },
+    { id: 'store-results', type: 'memory-write', label: 'Store TS/React findings', config: { namespace: 'coding-tools', key: 'ts-react-findings', value: {}, ttl: 86400 }, dependsOn: ['search-ts-react'] },
+  ],
+};
+
+const PYTHON_BEST_PRACTICES_WORKFLOW: WorkflowDefinition = {
+  id: 'python-best-practices-workflow',
+  name: 'Python Best Practices',
+  description: 'Searches Serious Python and Beyond Basic Stuff for clean code, module organization, testing, and performance optimization patterns.',
+  category: 'development',
+  tags: ['python', 'best-practices', 'clean-code', 'testing'],
+  schedule: null,
+  steps: [
+    { id: 'search-python', type: 'coding-skill', label: 'Search Python best practices', config: { skill: 'python-best-practices', query: 'Python modules testing performance clean code', params: { category: 'Computers' } }, dependsOn: [] },
+    { id: 'store-results', type: 'memory-write', label: 'Store Python findings', config: { namespace: 'coding-tools', key: 'python-findings', value: {}, ttl: 86400 }, dependsOn: ['search-python'] },
+  ],
+};
+
+const DISTRIBUTED_SYSTEMS_WORKFLOW: WorkflowDefinition = {
+  id: 'distributed-systems-workflow',
+  name: 'Distributed Systems Architect',
+  description: 'Searches DDIA and Think Distributed Systems for architecture patterns around replication, partitioning, consensus, and consistency.',
+  category: 'development',
+  tags: ['distributed-systems', 'architecture', 'consistency', 'replication'],
+  schedule: null,
+  steps: [
+    { id: 'search-distsys', type: 'coding-skill', label: 'Search distributed systems patterns', config: { skill: 'distributed-systems', query: 'replication partitioning consensus consistency fault tolerance', params: { category: 'Computers' } }, dependsOn: [] },
+    { id: 'store-results', type: 'memory-write', label: 'Store architecture findings', config: { namespace: 'coding-tools', key: 'distsys-findings', value: {}, ttl: 86400 }, dependsOn: ['search-distsys'] },
+  ],
+};
+
+const SECURITY_WORKFLOW: WorkflowDefinition = {
+  id: 'security-patterns-workflow',
+  name: 'Security Patterns Audit',
+  description: 'Searches CEH Study Guide for security vulnerabilities, authentication patterns, encryption, and network scanning best practices.',
+  category: 'security',
+  tags: ['security', 'audit', 'vulnerability', 'authentication'],
+  schedule: null,
+  steps: [
+    { id: 'search-security', type: 'coding-skill', label: 'Search security patterns', config: { skill: 'security-patterns', query: 'vulnerability assessment authentication encryption scanning', params: { category: 'Computers' } }, dependsOn: [] },
+    { id: 'store-results', type: 'memory-write', label: 'Store security findings', config: { namespace: 'coding-tools', key: 'security-findings', value: {}, ttl: 86400 }, dependsOn: ['search-security'] },
+  ],
+};
+
+const DAILY_CODING_DIGEST: WorkflowDefinition = {
+  id: 'daily-coding-digest',
+  name: 'Daily Coding Knowledge Digest',
+  description: 'Runs all coding tools in parallel — code review, TS/React, Python, distributed systems, security, algorithms — and consolidates insights.',
+  category: 'knowledge',
+  tags: ['coding', 'knowledge', 'digest', 'daily'],
+  schedule: '0 9 * * *',
+  steps: [
+    { id: 'code-review', type: 'coding-skill', label: 'Code review patterns', config: { skill: 'code-review-assistant', query: 'code review testing best practices', limit: 3, params: { category: 'Computers' } }, dependsOn: [] },
+    { id: 'ts-react', type: 'coding-skill', label: 'TS/React patterns', config: { skill: 'ts-react-patterns', query: 'TypeScript React patterns', limit: 3, params: { category: 'Computers' } }, dependsOn: [] },
+    { id: 'python', type: 'coding-skill', label: 'Python best practices', config: { skill: 'python-best-practices', query: 'Python clean code testing', limit: 3, params: { category: 'Computers' } }, dependsOn: [] },
+    { id: 'distsys', type: 'coding-skill', label: 'Distributed systems', config: { skill: 'distributed-systems', query: 'distributed systems architecture', limit: 3, params: { category: 'Computers' } }, dependsOn: [] },
+    { id: 'security', type: 'coding-skill', label: 'Security patterns', config: { skill: 'security-patterns', query: 'security authentication encryption', limit: 3, params: { category: 'Computers' } }, dependsOn: [] },
+    { id: 'consolidate', type: 'memory-write', label: 'Consolidate daily coding digest', config: { namespace: 'coding-tools', key: 'daily-coding-digest', value: {}, ttl: 86400 }, dependsOn: ['code-review', 'ts-react', 'python', 'distsys', 'security'] },
+  ],
+};
+
 // Register all built-in workflows
 export function registerBuiltInWorkflows(): void {
   registerWorkflow(COMPETITIVE_MONITOR);
@@ -542,4 +661,11 @@ export function registerBuiltInWorkflows(): void {
   registerWorkflow(CONTENT_FACTORY);
   registerWorkflow(SELF_UPGRADE);
   registerWorkflow(MUSIC_REVENUE_TRACKER);
+  registerWorkflow(BOOK_KNOWLEDGE_DIGEST);
+  registerWorkflow(CODE_REVIEW_WORKFLOW);
+  registerWorkflow(TS_REACT_WORKFLOW);
+  registerWorkflow(PYTHON_BEST_PRACTICES_WORKFLOW);
+  registerWorkflow(DISTRIBUTED_SYSTEMS_WORKFLOW);
+  registerWorkflow(SECURITY_WORKFLOW);
+  registerWorkflow(DAILY_CODING_DIGEST);
 }

@@ -12,14 +12,11 @@ as a continuous background process that:
 """
 import asyncio
 import threading
-import time
 import signal
-import sys
 from datetime import datetime, time as time_of_day, timedelta
-from typing import Dict, List, Any, Optional, Callable, Set
+from typing import Dict, Any, Optional, Callable, Set
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 from loguru import logger
 from config import settings
 from memory import memory

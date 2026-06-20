@@ -79,7 +79,7 @@ deploy_railway() {
   [[ -n "${CLAW_SUCCESS_URL:-}" ]]                && railway variables set CLAW_SUCCESS_URL="$CLAW_SUCCESS_URL"
   [[ -n "${CLAW_CANCEL_URL:-}" ]]                 && railway variables set CLAW_CANCEL_URL="$CLAW_CANCEL_URL"
   railway variables set NODE_ENV=production
-  railway variables set CLAW_PORT=3000
+  railway variables set CLAW_PORT=3333
 
   # Deploy
   railway up --detach
@@ -128,10 +128,10 @@ deploy_docker() {
   docker run -d \
     --name "$APP_NAME" \
     --restart unless-stopped \
-    -p "${CLAW_PORT:-$DEFAULT_PORT}:3000" \
+    -p "${CLAW_PORT:-$DEFAULT_PORT}:3333" \
     -v "claw-protect-data:/app/data" \
     -e NODE_ENV=production \
-    -e CLAW_PORT=3000 \
+    -e CLAW_PORT=3333 \
     ${STRIPE_SECRET_KEY:+-e STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY"} \
     ${CLAW_STRIPE_WEBHOOK_SECRET:+-e CLAW_STRIPE_WEBHOOK_SECRET="$CLAW_STRIPE_WEBHOOK_SECRET"} \
     ${GEMINI_API_KEY:+-e GEMINI_API_KEY="$GEMINI_API_KEY"} \

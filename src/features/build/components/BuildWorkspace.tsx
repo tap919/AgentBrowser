@@ -120,13 +120,11 @@ export function BuildWorkspace({ pipeline, mounted, isEasyMode }: BuildWorkspace
             isPaused={pipeline.state.isPaused}
             pipelineRunning={pipeline.state.pipelineRunning}
             confidence={pipeline.state.confidence}
-            speed={pipeline.state.speed}
             metrics={pipeline.state.metrics}
             findings={pipeline.state.findings}
             log={pipeline.state.log}
             lastSaved={pipeline.lastSaved}
             onPauseResume={pipeline.handlePauseResume}
-            onSpeedChange={pipeline.handleSpeedChange}
             onRunAudit={pipeline.handleRunAudit}
             onExport={pipeline.handleExportReport}
           />

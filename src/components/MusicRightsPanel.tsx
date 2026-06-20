@@ -15,6 +15,11 @@ interface Song {
   writers: string | null;
   created?: string | null;
   checked?: boolean;
+  iswc?: string | null;
+  isrc?: string | null;
+  ipi?: string | null;
+  artistName?: string | null;
+  albumTitle?: string | null;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -43,6 +48,7 @@ export default function MusicRightsPanel() {
   const [catalog, setCatalog] = useState<Song[]>([]);
   const [publisherName, setPublisherName] = useState('');
   const [publisherIpi, setPublisherIpi] = useState('');
+  const [publisherPNumber, setPublisherPNumber] = useState('');
 
   // Raw data from extraction
   const [ascapRaw, setAscapRaw] = useState<any[]>([]);
@@ -236,6 +242,7 @@ export default function MusicRightsPanel() {
           hfaPass,
           publisherName,
           publisherIpi,
+          publisherPNumber,
           catalog: selectedSongs
         })
       });
@@ -663,53 +670,61 @@ export default function MusicRightsPanel() {
                 </div>
 
                 <div className="max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-border/20 scrollbar-track-transparent">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-background/40 border-b border-border/20 text-muted-foreground font-semibold">
-                        <th className="p-3 w-10 text-center">
-                          <input
-                            type="checkbox"
-                            checked={catalog.length > 0 && catalog.every(s => s.checked)}
-                            onChange={(e) => toggleSelectAll(e.target.checked)}
-                            className="rounded border-border/30 text-pink-500 focus:ring-pink-500"
-                          />
-                        </th>
-                        <th className="p-3">Song Title</th>
-                        <th className="p-3">ASCAP ID</th>
-                        <th className="p-3">MLC Code</th>
-                        <th className="p-3">Writers</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/10">
-                      {catalog.map((song, i) => (
-                        <tr
-                          key={i}
-                          className={`hover:bg-muted/10 transition-colors ${
-                            song.checked ? 'text-foreground' : 'text-muted-foreground/60'
-                          }`}
-                        >
-                          <td className="p-3 text-center">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-background/40 border-b border-border/20 text-muted-foreground font-semibold">
+                          <th className="p-3 w-10 text-center">
                             <input
                               type="checkbox"
-                              checked={song.checked}
-                              onChange={() => toggleSongChecked(i)}
+                              checked={catalog.length > 0 && catalog.every(s => s.checked)}
+                              onChange={(e) => toggleSelectAll(e.target.checked)}
                               className="rounded border-border/30 text-pink-500 focus:ring-pink-500"
                             />
-                          </td>
-                          <td className="p-3 font-medium">{song.title}</td>
-                          <td className="p-3 font-mono text-[10px] text-muted-foreground">
-                            {song.ascapId || <span className="text-zinc-600">—</span>}
-                          </td>
-                          <td className="p-3 font-mono text-[10px] text-muted-foreground">
-                            {song.mlcCode || <span className="text-zinc-600">—</span>}
-                          </td>
-                          <td className="p-3 text-muted-foreground max-w-xs truncate" title={song.writers || ''}>
-                            {song.writers || <span className="text-zinc-600">—</span>}
-                          </td>
+                          </th>
+                          <th className="p-3">Song Title</th>
+                          <th className="p-3">ASCAP ID</th>
+                          <th className="p-3">MLC Code</th>
+                          <th className="p-3">ISWC</th>
+                          <th className="p-3">ISRC</th>
+                          <th className="p-3">Writers</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-border/10">
+                        {catalog.map((song, i) => (
+                          <tr
+                            key={i}
+                            className={`hover:bg-muted/10 transition-colors ${
+                              song.checked ? 'text-foreground' : 'text-muted-foreground/60'
+                            }`}
+                          >
+                            <td className="p-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={song.checked}
+                                onChange={() => toggleSongChecked(i)}
+                                className="rounded border-border/30 text-pink-500 focus:ring-pink-500"
+                              />
+                            </td>
+                            <td className="p-3 font-medium">{song.title}</td>
+                            <td className="p-3 font-mono text-[10px] text-muted-foreground">
+                              {song.ascapId || <span className="text-zinc-600">—</span>}
+                            </td>
+                            <td className="p-3 font-mono text-[10px] text-muted-foreground">
+                              {song.mlcCode || <span className="text-zinc-600">—</span>}
+                            </td>
+                            <td className="p-3 font-mono text-[10px] text-muted-foreground">
+                              {song.iswc || <span className="text-zinc-600">—</span>}
+                            </td>
+                            <td className="p-3 font-mono text-[10px] text-muted-foreground">
+                              {song.isrc || <span className="text-zinc-600">—</span>}
+                            </td>
+                            <td className="p-3 text-muted-foreground max-w-xs truncate" title={song.writers || ''}>
+                              {song.writers || <span className="text-zinc-600">—</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                 </div>
               </div>
 
@@ -771,6 +786,16 @@ export default function MusicRightsPanel() {
                       placeholder="••••••••"
                       className="w-full px-3 py-2 rounded-lg bg-background/40 border border-border/30 focus:outline-none focus:border-pink-500/50 text-foreground placeholder:text-muted-foreground/50 transition-colors"
                       required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-muted-foreground">HFA P# (Publisher Number)</label>
+                    <input
+                      type="text"
+                      value={publisherPNumber}
+                      onChange={e => setPublisherPNumber(e.target.value)}
+                      placeholder="e.g. P-012345"
+                      className="w-full px-3 py-2 rounded-lg bg-background/40 border border-border/30 focus:outline-none focus:border-pink-500/50 text-foreground placeholder:text-muted-foreground/50 transition-colors"
                     />
                   </div>
                 </div>

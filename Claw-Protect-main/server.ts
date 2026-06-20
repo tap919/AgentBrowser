@@ -172,7 +172,7 @@ const CLAW_PRODUCTS: StripeProductConfig[] = [
 ];
 
 // Provision or upgrade API key after successful Stripe subscription
-function provisionApiKey(email: string, plan: PlanTier, stripeCustomerId: string, _stripeSubscriptionId: string): ApiKeyRecord {
+function provisionApiKey(email: string, plan: PlanTier, stripeCustomerId: string): ApiKeyRecord {
   // Check if email already has a key — upgrade it
   const allKeys = apiKeyDb.getAll();
   const existing = allKeys.find(k => k.email === email && k.active);
@@ -203,7 +203,7 @@ async function startServer() {
   const app = express();
   const SERVE_SAAS = process.env.CLAW_SERVE_SAAS === 'true';
   // Service mode on 3333, SAAS on 3000 (or set CLAW_PORT env)
-  const PORT = process.env.CLAW_PORT ? parseInt(process.env.CLAW_PORT, 10) : (SERVE_SAAS ? 3000 : 3333);
+  const PORT = process.env.CLAW_PORT ? parseInt(process.env.CLAW_PORT, 10) : 3333;
 
   // ── Legacy JSON → SQLite one-time migration ─────────────────────────────
   const dataDir = path.join(__dirname, 'data');
@@ -230,8 +230,8 @@ async function startServer() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
         connectSrc: ["'self'", "https:"],
         frameAncestors: ["'none'"],
@@ -281,7 +281,7 @@ async function startServer() {
       return;
     }
 
-    console.log(`[Claw Stripe] Event: ${event.type}`);
+    process.stdout.write(`[Claw Stripe] Event: ${event.type}\n`);
 
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -292,8 +292,8 @@ async function startServer() {
         const subscriptionId = typeof session.subscription === 'string' ? session.subscription : '';
 
         if (email) {
-          const apiKey = provisionApiKey(email, plan, customerId, subscriptionId);
-          console.log(`[Claw Stripe] Provisioned ${plan} key for ${email}`);
+          const apiKey = provisionApiKey(email, plan, customerId);
+          process.stdout.write(`[Claw Stripe] Provisioned ${plan} key for ${email}\n`);
         }
         break;
       }
@@ -303,14 +303,14 @@ async function startServer() {
         // Downgrade to free
         if (customerId) {
           apiKeyDb.deactivateByCustomer(customerId);
-          console.log(`[Claw Stripe] Downgraded customer ${customerId} to free (subscription canceled)`);
+          process.stdout.write(`[Claw Stripe] Downgraded customer ${customerId} to free (subscription canceled)\n`);
         }
         break;
       }
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = typeof invoice.customer === 'string' ? invoice.customer : '';
-        console.log(`[Claw Stripe] Payment failed for customer ${customerId}`);
+        process.stdout.write(`[Claw Stripe] Payment failed for customer ${customerId}\n`);
         break;
       }
     }
@@ -325,6 +325,7 @@ async function startServer() {
 
   // Mock database for telemetry history
   const telemetryHistory: any[] = [];
+  const MAX_TELEMETRY = 1000;
 
   // =========================================================================
   // EXISTING API ROUTES (unchanged)
@@ -367,6 +368,9 @@ async function startServer() {
       timestamp: req.body.timestamp || new Date().toISOString()
     };
     telemetryHistory.push(report);
+    if (telemetryHistory.length > MAX_TELEMETRY) {
+      telemetryHistory.splice(0, telemetryHistory.length - MAX_TELEMETRY);
+    }
     res.status(201).json(report);
   });
 
@@ -1220,16 +1224,16 @@ async function startServer() {
       });
     }
   } else {
-    console.log(`[Service Mode] SaaS frontend disabled - API only`);
+    process.stdout.write(`[Service Mode] SaaS frontend disabled - API only\n`);
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Claw Protect Backend running on http://localhost:${PORT}`);
-    console.log(`SaaS API: http://localhost:${PORT}/api/v1/modules`);
-    console.log(`Pricing:  http://localhost:${PORT}/api/v1/pricing`);
-    console.log(`KEV Feed: http://localhost:${PORT}/api/v1/threat-intel/status`);
+    process.stdout.write(`Claw Protect Backend running on http://localhost:${PORT}\n`);
+    process.stdout.write(`SaaS API: http://localhost:${PORT}/api/v1/modules\n`);
+    process.stdout.write(`Pricing:  http://localhost:${PORT}/api/v1/pricing\n`);
+    process.stdout.write(`KEV Feed: http://localhost:${PORT}/api/v1/threat-intel/status\n`);
     if (!SERVE_SAAS) {
-      console.log(`[Service Mode] API-only - no frontend served`);
+      process.stdout.write(`[Service Mode] API-only - no frontend served\n`);
     }
   });
 }

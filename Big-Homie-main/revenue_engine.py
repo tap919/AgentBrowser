@@ -5,7 +5,7 @@ Coordinates multiple revenue streams via goal-oriented sub-agent tasks
 import asyncio
 import uuid
 from datetime import datetime, date
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 from loguru import logger
@@ -298,7 +298,6 @@ class RevenueEngine:
     async def _handle_betting(self, task: RevenueTask, max_amount: float):
         """Sports betting sub-agent (DraftKings / PrizePicks / Odds API)"""
         try:
-            from integrations.draftkings_integration import draftkings
             logger.info(f"[BETTING] Task {task.id}: scanning lines via DraftKings")
             self.complete_task(task.id, revenue=0.0, cost=0.0, result={"note": "Betting line scan complete"})
         except Exception as e:
@@ -411,12 +410,12 @@ class RevenueEngine:
             RevenueStream.CRYPTO:       f"Monitor crypto markets and execute spot trades on high-confidence signals targeting ${goal_usd:.2f}",
             RevenueStream.OPTIONS:      f"Scan options chain for high-probability plays targeting ${goal_usd:.2f} credit",
             RevenueStream.BETTING:      f"Identify +EV sports betting opportunities below max stake ${settings.revenue_max_single_trade_usd}",
-            RevenueStream.FREELANCE:    f"Check active freelance platform jobs and submit qualified proposals",
-            RevenueStream.ECOMMERCE:    f"Process pending Shopify orders and optimize product listings",
-            RevenueStream.SAAS:         f"Review SaaS subscription metrics and follow up on churned users",
-            RevenueStream.MAAS:         f"Monitor MaaS API usage and billing",
-            RevenueStream.SUPPLY_CHAIN: f"Check supply chain pipeline and flag arbitrage opportunities",
-            RevenueStream.CALL_CENTER:  f"Process call queue and route inbound leads",
+            RevenueStream.FREELANCE:    "Check active freelance platform jobs and submit qualified proposals",
+            RevenueStream.ECOMMERCE:    "Process pending Shopify orders and optimize product listings",
+            RevenueStream.SAAS:         "Review SaaS subscription metrics and follow up on churned users",
+            RevenueStream.MAAS:         "Monitor MaaS API usage and billing",
+            RevenueStream.SUPPLY_CHAIN: "Check supply chain pipeline and flag arbitrage opportunities",
+            RevenueStream.CALL_CENTER:  "Process call queue and route inbound leads",
         }
         return descs.get(stream, f"Execute {stream.value} revenue tasks targeting ${goal_usd:.2f}")
 

@@ -24,7 +24,6 @@ import os
 import json
 import logging
 import re
-import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -185,7 +184,7 @@ class SaaSSpinner:
             link_resp = httpx.post(
                 "https://api.stripe.com/v1/payment_links",
                 auth=(STRIPE_SECRET_KEY, ""),
-                data={f"line_items[0][price]": price_id,
+                data={"line_items[0][price]": price_id,
                       "line_items[0][quantity]": "1"},
                 timeout=30,
             )

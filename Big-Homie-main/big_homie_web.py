@@ -6,11 +6,12 @@ import asyncio
 import json
 import os
 import sys
+from collections import defaultdict
 from pathlib import Path
-from datetime import datetime
+from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, WebSocket
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -30,13 +31,25 @@ app.add_middleware(
 )
 
 
+class ConnectionState:
+    def __init__(self):
+        self.seq = 0
+        self.correlation_id = str(uuid4())
+        self.lock = asyncio.Lock()
+        # Per-correlationId queue: serializes processing without blocking other pipelines
+        self.correlation_queues: dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)
+        self.correlation_tasks: dict[str, asyncio.Task] = {}
+
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
+        self.connection_states: dict[WebSocket, ConnectionState] = {}
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        self.connection_states[websocket] = ConnectionState()
         try:
             client = getattr(websocket, 'client', None)
             print(f"WebSocket connected from: {client}")
@@ -46,6 +59,24 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+        state = self.connection_states.pop(websocket, None)
+        if state:
+            for task in state.correlation_tasks.values():
+                task.cancel()
+
+    def get_state(self, websocket: WebSocket) -> ConnectionState:
+        return self.connection_states.setdefault(websocket, ConnectionState())
+
+    async def send_json(self, websocket: WebSocket, payload: dict):
+        state = self.get_state(websocket)
+        async with state.lock:
+            state.seq += 1
+            envelope = {
+                "seq": state.seq,
+                "correlationId": state.correlation_id,
+                "payload": payload,
+            }
+        await websocket.send_json(envelope)
 
 
 manager = ConnectionManager()
@@ -1243,7 +1274,7 @@ HTML = """<!DOCTYPE html>
                 try {
                     settings = JSON.parse(saved);
                 } catch(e) {
-                    console.log('Could not load settings');
+                    /* noop */
                 }
             }
             updateSettingsUI();
@@ -1320,22 +1351,22 @@ HTML = """<!DOCTYPE html>
         
         // ===== SETTINGS MODAL =====
         if (settingsBtn) {
-            console.log('Settings button found:', settingsBtn);
+            /* noop */
             settingsBtn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Settings clicked! Modal:', settingsModal);
+                /* noop */
                 if (settingsModal) {
                     settingsModal.classList.add('active');
-                    console.log('Modal classes:', settingsModal.className);
+                    /* noop */
                     updateSettingsUI();
-                    console.log('Settings UI updated');
+                    /* noop */
                 } else {
                     alert('ERROR: Settings modal element not found!');
                     console.error('Settings modal element is null');
                 }
             };
-            console.log('Settings button onclick attached');
+            /* noop */
         } else {
             console.error('Settings button NOT found');
         }
@@ -1410,7 +1441,7 @@ HTML = """<!DOCTYPE html>
         
         // ===== CONNECTION ===== 
         function connect() {
-            console.log('Connecting to WebSocket...');
+            /* noop */
             const scheme = (location.protocol === 'https:') ? 'wss://' : 'ws://';
             const host = location.host || (location.hostname + (location.port ? ':' + location.port : ''));
             const baseUrl = scheme + host + '/ws';
@@ -1422,7 +1453,7 @@ HTML = """<!DOCTYPE html>
             let attempt = 0;
 
             function tryUrl(url) {
-                console.log('Attempting WebSocket to', url, 'attempt', attempt);
+                /* noop */
                 try {
                     ws = new WebSocket(url);
                 } catch(err) {
@@ -1432,7 +1463,7 @@ HTML = """<!DOCTYPE html>
                 }
 
                 ws.onopen = function() {
-                    console.log('Connected');
+                    /* noop */
                     isConnected = true;
                     updateConnectionStatus(true);
                     loadData();
@@ -1440,7 +1471,7 @@ HTML = """<!DOCTYPE html>
                 };
 
                 ws.onclose = function() {
-                    console.log('Connection closed');
+                    /* noop */
                     isConnected = false;
                     updateConnectionStatus(false);
                     attempt += 1;
@@ -1484,11 +1515,11 @@ HTML = """<!DOCTYPE html>
         // ===== MESSAGE HANDLING =====
         function handleMessage(data) {
             const type = data.type;
-            console.log('Got message:', type);
+            /* noop */
             
             switch(type) {
                 case 'connected':
-                    console.log('WebSocket connected!');
+                    /* noop */
                     break;
                 case 'status':
                     toolCount.textContent = data.tools || 0;
@@ -1516,7 +1547,7 @@ HTML = """<!DOCTYPE html>
                     addSystemMessage('⚙️ ' + (data.message || 'Settings updated'));
                     break;
                 default:
-                    console.log('Unhandled message type:', type, data);
+                    /* noop */
             }
         }
         
@@ -1533,7 +1564,7 @@ HTML = """<!DOCTYPE html>
         function send() {
             const text = input.value.trim();
             if(!text || !isConnected) {
-                console.log('Cannot send - connected:', isConnected, 'text:', text.length);
+                /* noop */
                 return;
             }
             
@@ -1675,13 +1706,13 @@ HTML = """<!DOCTYPE html>
             document.addEventListener('click', function(e){
                 try {
                     const t = e.target;
-                    console.log('DEBUG_CLICK', t.tagName, 'id=' + (t.id||''), 'class=' + (t.className||''), 'text=' + ((t.innerText||'').trim().slice(0,60)));
+                    /* noop */
                 } catch(err) { console.error('DEBUG_CLICK_ERR', err); }
             }, true);
         })();
 
         // ===== INITIALIZATION =====
-        console.log('Initializing Big Homie');
+        /* noop */
         loadSettings();
         connect();
         }); // DOMContentLoaded
@@ -1695,7 +1726,6 @@ async def get_ui():
     return HTML
 
 
-from pydantic import BaseModel
 
 class ExecuteRequest(BaseModel):
     skill: str
@@ -1734,7 +1764,6 @@ async def run_crew_endpoint(req: CrewRequest):
             "message": "crewai not installed. Run: pip install crewai langchain-openai",
         }
     # CrewAI is synchronous — run in thread pool
-    import asyncio
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, run_crew, req.project_name, req.project_desc, req.skill)
     return result
@@ -1911,16 +1940,48 @@ async def browse_web(req: BrowseRequest):
 async def ws_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        # Send immediate connection confirmation
-        await websocket.send_json({"type": "connected", "message": "Connected to Big Homie"})
-        
+        state = manager.get_state(websocket)
+        # Send immediate connection confirmation (enveloped)
+        await manager.send_json(websocket, {"type": "connected", "message": "Connected to Big Homie"})
+
         while True:
-            data = await websocket.receive_json()
-            print(f"Received: {data.get('type')}")
-            await handle_ws(websocket, data)
+            raw = await websocket.receive_json()
+            envelope = raw if isinstance(raw, dict) else {}
+            payload = envelope.get("payload") if "payload" in envelope else envelope
+            seq = envelope.get("seq")
+            correlation_id = envelope.get("correlationId", "unknown")
+            print(f"[WS] recv seq={seq} correlationId={correlation_id} type={payload.get('type') if isinstance(payload, dict) else '?'}")
+
+            if not isinstance(payload, dict):
+                continue
+
+            cid = correlation_id or str(uuid4())
+            queue = state.correlation_queues[cid]
+            await queue.put(payload)
+
+            if cid not in state.correlation_tasks or state.correlation_tasks[cid].done():
+                state.correlation_tasks[cid] = asyncio.create_task(process_correlation_queue(websocket, state, cid))
     except Exception as e:
         print(f"WebSocket error: {e}")
         manager.disconnect(websocket)
+
+
+async def process_correlation_queue(ws: WebSocket, state: ConnectionState, cid: str):
+    """Process messages for a single correlationId sequentially without blocking other IDs."""
+    try:
+        queue = state.correlation_queues[cid]
+        while not queue.empty():
+            payload = await queue.get()
+            try:
+                await handle_ws(ws, payload)
+            except Exception as e:
+                print(f"[WS] Handler error for correlationId={cid}: {e}")
+            finally:
+                queue.task_done()
+    except asyncio.CancelledError:
+        pass
+    finally:
+        state.correlation_tasks.pop(cid, None)
 
 
 async def handle_ws(ws: WebSocket, data: dict):
@@ -1937,13 +1998,13 @@ async def handle_ws(ws: WebSocket, data: dict):
                 with open(settings_file, 'w') as f:
                     json.dump(settings, f, indent=2)
                 
-                await ws.send_json({
+                await manager.send_json(ws, {
                     "type": "settings_saved",
                     "message": "Configuration saved successfully"
                 })
             except Exception as e:
                 print(f"Settings error: {e}")
-                await ws.send_json({
+                await manager.send_json(ws, {
                     "type": "error",
                     "message": f"Failed to save settings: {str(e)[:50]}"
                 })
@@ -1951,7 +2012,7 @@ async def handle_ws(ws: WebSocket, data: dict):
         elif t == "get_status":
             mcp_mod = get_mcp()
             tools_count = len(mcp_mod.tools) if mcp_mod and hasattr(mcp_mod, "tools") else 0
-            await ws.send_json({
+            await manager.send_json(ws, {
                 "type": "status",
                 "tools": tools_count,
                 "memory": 0,
@@ -1967,19 +2028,19 @@ async def handle_ws(ws: WebSocket, data: dict):
                         "description": getattr(tool, "description", ""),
                         "category": getattr(tool, "category", ""),
                     })
-            await ws.send_json({"type": "tools", "tools": tools[:20]})
+            await manager.send_json(ws, {"type": "tools", "tools": tools[:20]})
 
         elif t == "get_extensions":
-            await ws.send_json({"type": "extensions", "extensions": []})
+            await manager.send_json(ws, {"type": "extensions", "extensions": []})
 
         elif t == "get_memory":
-            await ws.send_json({"type": "memory", "memories": []})
+            await manager.send_json(ws, {"type": "memory", "memories": []})
 
         elif t == "chat":
             message = data.get("message", "")
             user_id = data.get("user_id", "big_homie")
 
-            await ws.send_json({"type": "thinking", "message": "Retrieving memory context..."})
+            await manager.send_json(ws, {"type": "thinking", "message": "Retrieving memory context..."})
 
             # ── 1. Inject Mem0 memory context ────────────────────────────────
             memory_ctx = mem0_search(message, user_id=user_id)
@@ -1987,7 +2048,7 @@ async def handle_ws(ws: WebSocket, data: dict):
             # ── 2. Try LangGraph pipeline first ──────────────────────────────
             run_pipeline = get_pipeline()
             if run_pipeline:
-                await ws.send_json({"type": "thinking", "message": "Running LangGraph plan → execute → validate → report..."})
+                await manager.send_json(ws, {"type": "thinking", "message": "Running LangGraph plan → execute → validate → report..."})
                 try:
                     pipe_result = await run_pipeline(
                         user_message=message,
@@ -1995,7 +2056,7 @@ async def handle_ws(ws: WebSocket, data: dict):
                         thread_id=user_id,
                     )
                     if pipe_result.get("needs_human"):
-                        await ws.send_json({
+                        await manager.send_json(ws, {
                             "type": "high_risk_pause",
                             "message": "High-risk action detected — awaiting your approval before proceeding.",
                             "plan": pipe_result.get("plan", ""),
@@ -2005,14 +2066,14 @@ async def handle_ws(ws: WebSocket, data: dict):
                     response = pipe_result.get("final_response") or f"Echo: {message}"
                     # Surface the plan as a thinking update
                     if pipe_result.get("plan"):
-                        await ws.send_json({"type": "thinking", "message": f"Plan:\n{pipe_result['plan']}"})
+                        await manager.send_json(ws, {"type": "thinking", "message": f"Plan:\n{pipe_result['plan']}"})
                 except Exception as e:
                     response = f"Pipeline error (falling back): {e}"
                     run_pipeline = None  # fall through to direct LLM
 
             # ── 3. Fallback: direct LLM call ──────────────────────────────────
             if not run_pipeline:
-                await ws.send_json({"type": "thinking", "message": "Generating response..."})
+                await manager.send_json(ws, {"type": "thinking", "message": "Generating response..."})
                 try:
                     llm, TaskType = get_llm_gateway()
                     if llm:
@@ -2033,15 +2094,15 @@ async def handle_ws(ws: WebSocket, data: dict):
             # ── 4. Store in Mem0 ──────────────────────────────────────────────
             mem0_add(message, response, user_id=user_id)
 
-            await ws.send_json({"type": "chat", "message": response})
+            await manager.send_json(ws, {"type": "chat", "message": response})
         
         else:
             print(f"Unknown message type: {t}")
-            await ws.send_json({"type": "error", "message": f"Unknown command: {t}"})
+            await manager.send_json(ws, {"type": "error", "message": f"Unknown command: {t}"})
             
     except Exception as e:
         print(f"Handle error for {t}: {e}")
-        await ws.send_json({"type": "error", "message": str(e)[:100]})
+        await manager.send_json(ws, {"type": "error", "message": str(e)[:100]})
 
 
 # ─── REAL OSS UPGRADES: Audit, Tool Status, MCP Discovery ──────────────────────
@@ -2173,6 +2234,44 @@ async def trigger_n8n_workflow():
             return {"status": "success", "message": "n8n workflow triggered via webhook."}
     except Exception as e:
         return {"status": "error", "message": f"n8n unreachable: {e}"}
+
+
+class LLMCompleteRequest(BaseModel):
+    messages: list[dict]
+    task_type: str = "general"
+    provider: str = ""
+    model: str = ""
+
+
+@app.post("/llm/complete")
+async def llm_complete(request: LLMCompleteRequest):
+    """Raw LLM completion — bridged by VibeServe and other consumers.
+    Delegates to llm_gateway with the configured provider/model.
+    """
+    try:
+        llm, TaskType = get_llm_gateway()
+        if not llm:
+            return {"status": "error", "message": "LLM gateway failed to initialize"}
+
+        task_type_map = {
+            "general": TaskType.GENERAL,
+            "reasoning": TaskType.REASONING,
+            "coding": TaskType.CODING,
+            "fast": TaskType.FAST,
+        }
+        ttype = task_type_map.get(request.task_type.lower(), TaskType.GENERAL)
+
+        kwargs = {}
+        if request.provider:
+            kwargs["provider"] = request.provider
+        if request.model:
+            kwargs["model"] = request.model
+
+        result = await llm.complete(request.messages, task_type=ttype, **kwargs)
+        content = result.get("content", str(result)) if isinstance(result, dict) else str(result)
+        return {"status": "success", "content": content, "provider": result.get("provider", "") if isinstance(result, dict) else ""}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 if __name__ == "__main__":

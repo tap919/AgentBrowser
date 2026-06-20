@@ -130,7 +130,22 @@ rl.once('line', async (line) => {
             const writers = cells[2];
             // Validate code is typical MLC song code (6 alphanumeric)
             if (title && code && code.match(/^[A-Z0-9]{6}$/) && writers) {
-              songs.push({ title, songCode: code, writers });
+              const obj: Record<string, string> = { title, songCode: code, writers };
+              // Parse additional columns for ISRC, artist, album
+              // MLC catalog layout often includes: title, code, writers, ISRC, artist, album
+              for (let i = 3; i < cells.length; i++) {
+                const val = cells[i];
+                if (/^[A-Z]{2}[A-Z0-9]{9}$/.test(val)) {
+                  obj.isrc = val;
+                } else if (val && !/^[A-Z0-9]{6}$/.test(val) && val !== title && val.length > 2) {
+                  if (!obj.artistName) {
+                    obj.artistName = val;
+                  } else if (!obj.albumTitle) {
+                    obj.albumTitle = val;
+                  }
+                }
+              }
+              songs.push(obj);
             }
           }
         });
@@ -143,9 +158,22 @@ rl.once('line', async (line) => {
             const code = lines[i+1];
             const writers = lines[i+2];
             if (code.match(/^[A-Z0-9]{6}$/) && writers.includes(',') && !title.includes('%') && title.length < 100) {
+              // Try to find ISRC in nearby lines
+              let isrc = '';
+              let artistName = '';
+              let albumTitle = '';
+              for (let j = Math.max(0, i - 3); j < Math.min(lines.length, i + 6); j++) {
+                const nearby = lines[j];
+                if (/^[A-Z]{2}[A-Z0-9]{9}$/.test(nearby)) {
+                  isrc = nearby;
+                } else if (nearby && !/^[A-Z0-9]{6}$/.test(nearby) && nearby !== title && nearby.length > 2) {
+                  if (!artistName) artistName = nearby;
+                  else if (!albumTitle) albumTitle = nearby;
+                }
+              }
               // Deduplicate immediately in list
               if (!songs.some(s => s.songCode === code)) {
-                songs.push({ title, songCode: code, writers });
+                songs.push({ title, songCode: code, writers, isrc, artistName, albumTitle });
               }
             }
           }

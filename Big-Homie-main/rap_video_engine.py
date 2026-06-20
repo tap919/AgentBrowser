@@ -3,12 +3,16 @@ Full pipeline: lyrics → beat → vocal synth → video scenes → FFmpeg rende
 Revenue stream: RevenueStream.MAAS  ($49/video one-shot)
 """
 from __future__ import annotations
-import asyncio, json, uuid, os, shutil, tempfile
+import asyncio
+import json
+import uuid
+import os
+import shutil
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from loguru import logger
 
 
@@ -182,7 +186,6 @@ WRITE THE FULL LYRICS NOW:"""
             try:
                 from bark import generate_audio, SAMPLE_RATE  # type: ignore
                 import scipy.io.wavfile as wav  # type: ignore
-                import numpy as np
 
                 audio = generate_audio(clean_lyrics[:500])
                 wav_path = self.TEMP_DIR / f"vocals_{job_id}.wav"

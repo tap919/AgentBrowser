@@ -4,7 +4,7 @@ Learn from outcomes of decisions through reinforcement signals
 """
 import json
 import sqlite3
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path

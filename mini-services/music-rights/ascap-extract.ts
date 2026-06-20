@@ -79,12 +79,30 @@ rl.once('line', async (line) => {
         return rows.map(row => {
           const cols = Array.from(row.querySelectorAll('td')).map(td => td.innerText.trim());
           if (cols.length < 3) return null;
-          return {
+
+          // ASCAP table layout (varies by view config):
+          //   [title, status, workId, created, ?iswc?, ?writers?, ?ipi?]
+          const obj: Record<string, string> = {
             title: cols[0],
             status: cols[1],
             workId: cols[2],
-            created: cols[3]
+            created: cols[3] || '',
           };
+
+          // If there are more columns, try to extract ISWC and writers
+          // ISWC matches pattern T-123.456.789-0
+          for (let i = 4; i < cols.length; i++) {
+            const val = cols[i];
+            if (/^T-\d{3}\.\d{3}\.\d{3}/.test(val)) {
+              obj.iswc = val;
+            } else if (/^\d{9,11}$/.test(val)) {
+              obj.ipi = val;
+            } else if (val && val.length > 3 && val !== obj.title && !/^\d+$/.test(val)) {
+              obj.writers = (obj.writers ? obj.writers + ', ' : '') + val;
+            }
+          }
+
+          return obj;
         }).filter(Boolean);
       });
 

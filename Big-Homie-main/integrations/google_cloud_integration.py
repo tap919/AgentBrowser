@@ -3,8 +3,7 @@ Google Cloud Platform Integration
 Extends existing Google integrations with Cloud Storage, BigQuery, Cloud Functions
 """
 import asyncio
-import httpx
-from typing import Dict, List, Optional, Any
+from typing import Optional, Any
 from dataclasses import dataclass
 from loguru import logger
 from config import settings

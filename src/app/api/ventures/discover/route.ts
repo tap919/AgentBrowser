@@ -22,9 +22,9 @@ export async function GET() {
       business,
       repos,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err.message || 'Discovery failed' },
+      { error: err instanceof Error ? err.message : 'Discovery failed' },
       { status: 500 }
     );
   }

@@ -1,4 +1,4 @@
-import type { PhaseInput, PhaseResult } from './PhaseRunner';
+import type { PhaseInput, PhaseResult, ProgressCallback } from './PhaseRunner';
 import { Phase1Research } from './phases/Phase1Research';
 import { Phase2Planning } from './phases/Phase2Planning';
 import { Phase3Design } from './phases/Phase3Design';
@@ -43,12 +43,12 @@ export class PipelineExecutor {
     return this._activePhase;
   }
 
-  async executePhase(phaseId: number, input: PhaseInput): Promise<PhaseResult> {
+  async executePhase(phaseId: number, input: PhaseInput, onProgress?: ProgressCallback): Promise<PhaseResult> {
     const def = PHASES.find(p => p.id === phaseId);
     if (!def) throw new Error(`Unknown phase: ${phaseId}`);
     const runner = new def.runner(this.workspaceDir);
     this._activePhase = phaseId;
-    return runner.execute(phaseId, input, this.abortController?.signal);
+    return runner.execute(phaseId, input, this.abortController?.signal, onProgress);
   }
 
   async executeAll(input: PhaseInput, onProgress?: PhaseCallback): Promise<PhaseResult[]> {
@@ -61,7 +61,13 @@ export class PipelineExecutor {
       for (const def of PHASES) {
         if (this.abortController.signal.aborted) break;
         onProgress?.(def.id, 0, `Starting ${def.name}...`);
-        const result = await this.executePhase(def.id, input);
+
+        const phaseProgress: ProgressCallback = (subStep, totalSteps, message) => {
+          const pct = totalSteps > 0 ? Math.round((subStep / totalSteps) * 100) : 0;
+          onProgress?.(def.id, pct, message);
+        };
+
+        const result = await this.executePhase(def.id, input, phaseProgress);
         results.push(result);
         onProgress?.(def.id, 100, `Completed ${def.name}`);
       }

@@ -23,7 +23,7 @@ export function recordProRevenue(entry: ProRevenueEntry): void {
     value: entry,
     agentId: 'economic-engine',
     ttl: 7776000,
-  }).catch(() => {});
+  }).catch((err) => console.error('[economic-engine] writeMemory failed', err));
 
   agentEventBus.emit('discovery', 'economic-engine', {
     type: 'pro-revenue-recorded',
@@ -63,7 +63,7 @@ export async function triggerContentDeploy(workflow: ContentDeployWorkflow): Pro
     value: workflow,
     agentId: 'economic-engine',
     ttl: 2592000,
-  }).catch(() => {});
+  }).catch((err) => console.error('[economic-engine] writeMemory failed', err));
 
   agentEventBus.emit('decision', 'economic-engine', {
     type: 'content-deploy-triggered',
@@ -89,7 +89,7 @@ export function recordCompetitiveSignal(signal: CompetitiveSignal): void {
     value: signal,
     agentId: 'economic-engine',
     ttl: 604800,
-  }).catch(() => {});
+  }).catch((err) => console.error('[economic-engine] writeMemory failed', err));
 
   agentEventBus.emit('alert', 'economic-engine', {
     type: 'competitive-signal',

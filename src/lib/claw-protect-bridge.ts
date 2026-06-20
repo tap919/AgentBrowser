@@ -34,7 +34,7 @@ class ClawProtectBridge {
 
   async initialize(): Promise<boolean> {
     // Initialize available components from Claw Protect
-    console.log('[ClawProtectBridge] Initializing...');
+    // [ClawProtectBridge] Initializing...
     
     const componentList: ClawComponent[] = [
       'ProtectedDialog',
@@ -52,7 +52,7 @@ class ClawProtectBridge {
       this.components.set(comp, true);
     }
 
-    console.log('[ClawProtectBridge] Initialized with components:', componentList);
+    // [ClawProtectBridge] Initialized with components: ${componentList.join(', ')}
     return true;
   }
 
@@ -106,7 +106,7 @@ class ClawProtectBridge {
 
   private logAudit(entry: AuditEntry): void {
     this.auditLog.push(entry);
-    console.log('[ClawProtectBridge] Audit:', entry);
+    // [ClawProtectBridge] Audit: ${JSON.stringify(entry)}
   }
 
   getAuditLog(): AuditEntry[] {

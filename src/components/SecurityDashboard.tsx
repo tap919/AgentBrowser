@@ -234,7 +234,7 @@ export default function SecurityDashboard() {
         </button>
         <button
           type="button"
-          onClick={() => console.log('Hide details triggered')}
+          onClick={() => { /* hide details action - placeholder for future implementation */ }}
           className="flex items-center justify-center gap-2 p-3 rounded-xl border border-border/30 bg-background/20 hover:bg-background/30 transition-all"
         >
           <EyeOff className="w-4 h-4 text-muted-foreground" />

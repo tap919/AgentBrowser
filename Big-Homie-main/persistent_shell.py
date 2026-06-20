@@ -128,7 +128,7 @@ class PersistentShellManager:
             logger.info(f"Created persistent shell session: {session_id}")
 
             return session_id
-        except Exception as e:
+        except Exception:
             # Clean up the process if session creation fails
             if process is not None:
                 try:

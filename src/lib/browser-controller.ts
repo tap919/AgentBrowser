@@ -106,9 +106,9 @@ export async function waitForSelector(selector: string, timeout = 10000): Promis
   await activePage.waitForSelector(selector, { timeout });
 }
 
-export async function evaluate<T>(fn: () => T): Promise<T> {
+export async function evaluate<T>(fn: (() => T) | string): Promise<T> {
   if (!activePage) throw new Error('Browser not launched');
-  return activePage.evaluate(fn);
+  return activePage.evaluate(fn as any);
 }
 
 export async function setCookie(name: string, value: string, domain: string): Promise<void> {
@@ -117,9 +117,9 @@ export async function setCookie(name: string, value: string, domain: string): Pr
 }
 
 export async function closeBrowser(): Promise<void> {
-  if (activePage) { try { await activePage.close(); } catch {} }
-  if (activeContext) { try { await activeContext.close(); } catch {} }
-  if (browserInstance) { try { await browserInstance.close(); } catch {} }
+  if (activePage) { try { await activePage.close(); } catch (err) { console.error('[browser-controller] closeBrowser activePage', err); } }
+  if (activeContext) { try { await activeContext.close(); } catch (err) { console.error('[browser-controller] closeBrowser activeContext', err); } }
+  if (browserInstance) { try { await browserInstance.close(); } catch (err) { console.error('[browser-controller] closeBrowser browserInstance', err); } }
   activePage = null;
   activeContext = null;
   browserInstance = null;

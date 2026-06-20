@@ -84,7 +84,6 @@ class KevService {
     if (meta) {
       this.lastFetched = new Date(meta.lastFetched);
       this.catalogVersion = meta.catalogVersion;
-      console.log(`[KEV] Loaded metadata from DB: ${meta.entryCount} entries, last fetched ${meta.lastFetched}`);
     }
 
     // Fetch if never fetched or stale
@@ -118,12 +117,10 @@ class KevService {
     this.fetchPromise = new Promise((r) => (resolvePromise = r));
 
     try {
-      console.log('[KEV] Fetching CISA KEV catalog...');
       const data = await this.fetchJson<CisaKevResponse>(CISA_KEV_URL);
 
       // Bail if nothing changed (catalog version is the same)
       if (this.catalogVersion && this.catalogVersion === data.catalogVersion) {
-        console.log(`[KEV] Catalog unchanged (version ${data.catalogVersion}), skipping upsert`);
         this.lastFetched = new Date();
         feedMetaDb.upsert({
           source: FEED_SOURCE,
@@ -164,7 +161,6 @@ class KevService {
         catalogVersion: data.catalogVersion,
       });
 
-      console.log(`[KEV] Synced ${entries.length} entries (catalog version ${data.catalogVersion})`);
       return { count: entries.length, isNew: true };
 
     } catch (err) {

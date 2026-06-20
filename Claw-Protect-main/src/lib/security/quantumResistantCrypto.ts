@@ -318,8 +318,6 @@ class QuantumResistantCrypto {
     this.cryptoAgility.currentAlgorithm = newAlgorithm;
     this.cryptoAgility.lastMigration = new Date();
 
-    console.log(`[Quantum-Resistant Crypto] Migrated from ${oldAlgorithm} to ${newAlgorithm}`);
-
     // In production, this would:
     // 1. Generate new keys with the new algorithm
     // 2. Re-encrypt sensitive data

@@ -8,7 +8,6 @@ This module provides:
 3. Unified API for all three systems to work together
 """
 
-import asyncio
 import json
 import os
 from typing import Dict, Any, Optional, List
@@ -112,18 +111,6 @@ class ClawProtectClient:
                     )
                 # For auth-required, allow the action (you need an API key)
                 return SecurityValidationResult(approved=True, risk_level="unknown")
-            else:
-                logger.warning(f"Security validation failed: {response.status_code}")
-                return SecurityValidationResult(
-                    approved=False,
-                    risk_level="high",
-                    blocked_reasons=[f"Security API error: {response.status_code}"],
-                )
-        except Exception as e:
-            logger.error(f"Security validation error: {e}")
-            return SecurityValidationResult(approved=True, risk_level="unknown")
-                    scan_id=data.get("scan_id"),
-                )
             else:
                 logger.warning(f"Security validation failed: {response.status_code}")
                 return SecurityValidationResult(

@@ -3,6 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import * as crypto from 'crypto';
+
+const IDENTITY_SECRET = process.env.CLAW_IDENTITY_SECRET || (() => { throw new Error('CLAW_IDENTITY_SECRET env var must be set'); })();
+
 // Inter-Agent Identity Verification - Addresses Problem #8: Agent Identity Spoofing
 // Enforces authentication between agents in multi-agent setups
 
@@ -36,7 +40,7 @@ class AgentIdentityManager {
   private identities: Map<string, AgentIdentity> = new Map();
   private activeChallenges: Map<string, AuthenticationChallenge> = new Map();
   private authenticationLog: AuthenticationResult[] = [];
-  private legacySecret = 'claw-protect-identity';
+
 
   /**
    * Register a new agent identity - Problem #8: Agent Identity Spoofing
@@ -58,7 +62,7 @@ class AgentIdentityManager {
    * Create authentication challenge
    */
   createChallenge(fromAgent: string, toAgent: string): AuthenticationChallenge {
-    const challengeId = `ch_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const challengeId = `ch_${Date.now()}_${crypto.randomUUID().split('-').join('').slice(0, 9)}`;
     const nonce = this.generateNonce();
     
     const challenge: AuthenticationChallenge = {
@@ -233,15 +237,14 @@ class AgentIdentityManager {
    * Generate random nonce
    */
   private generateNonce(): string {
-    return Math.random().toString(36).substring(2) + Date.now().toString(36);
+    return crypto.randomUUID() + Date.now().toString(36);
   }
 
   /**
    * Simple hash function (in production, use proper crypto)
    */
   private hashChallenge(nonce: string, publicKey: string): string {
-    // Simplified - in production use proper HMAC or digital signatures
-    return Buffer.from(nonce + publicKey).toString('base64');
+    return crypto.createHmac('sha256', IDENTITY_SECRET).update(nonce + publicKey).digest('hex');
   }
 
   /**
@@ -286,7 +289,7 @@ class AgentIdentityManager {
   }
 
   generateResponse(agentId: string, challenge: string): string {
-    return Buffer.from(`${agentId}:${challenge}:${this.legacySecret}`).toString('base64');
+    return crypto.createHmac('sha256', IDENTITY_SECRET).update(`${agentId}:${challenge}`).digest('hex');
   }
 
   verifyResponse(challengeId: string, response: string) {

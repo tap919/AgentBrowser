@@ -3,7 +3,7 @@ Content Utilities for Big Homie
 Smart truncation, markdown export, and content formatting
 """
 import re
-from typing import List, Tuple, Optional
+from typing import List, Optional
 from datetime import datetime
 from pathlib import Path
 from loguru import logger

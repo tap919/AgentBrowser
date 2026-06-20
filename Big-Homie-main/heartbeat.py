@@ -4,14 +4,14 @@ Periodic wake-up for proactive task execution and self-improvement
 """
 import asyncio
 import threading
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 from typing import List, Dict, Any, Callable, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 from loguru import logger
 from config import settings
 from memory import memory
-from router import router, AgentRole
+from router import router
 from log_review import log_reviewer
 
 class HeartbeatState(str, Enum):
@@ -123,20 +123,27 @@ class HeartbeatSystem:
         logger.info("Heartbeat stopped")
 
     def _run_heartbeat_loop(self):
-        """Main heartbeat loop running in background thread"""
-        while not self.stop_event.is_set():
+        """Main heartbeat loop running in background thread with persistent event loop"""
+        loop = asyncio.new_event_loop()
+        self._loop = loop
+        asyncio.set_event_loop(loop)
+        try:
+            while not self.stop_event.is_set():
+                try:
+                    if self.state == HeartbeatState.RUNNING and self._should_run_now():
+                        loop.run_until_complete(self._execute_heartbeat())
+
+                    self.stop_event.wait(60)
+
+                except Exception as e:
+                    logger.error(f"Heartbeat error: {e}")
+        finally:
             try:
-                # Check if should run this heartbeat
-                if self.state == HeartbeatState.RUNNING and self._should_run_now():
-                    # Execute heartbeat
-                    asyncio.run(self._execute_heartbeat())
-
-                # Sleep until next check (check every minute)
-                self.stop_event.wait(60)
-
-            except Exception as e:
-                logger.error(f"Heartbeat error: {e}")
-                # Continue running despite errors
+                loop.run_until_complete(loop.shutdown_asyncgens())
+            except Exception:
+                pass
+            loop.close()
+            self._loop = None
 
     def _should_run_now(self) -> bool:
         """Determine if heartbeat should run now"""
@@ -342,25 +349,25 @@ class HeartbeatSystem:
         return action_items
 
     async def _execute_autonomous_tasks(self, action_items: List[Dict]) -> List[Dict]:
-        """Execute autonomous tasks based on action items"""
+        """Execute autonomous tasks based on action items (LLM with deterministic fallback)"""
         actions_taken = []
 
         for item in action_items[:3]:  # Limit to 3 per heartbeat
             try:
-                # Use router for intelligent task execution
                 task_description = f"Process action item: {item['type']}"
 
                 decision, result = await router.execute_with_routing(
                     task=task_description,
                     context={"autonomous": True, "action_item": item},
-                    prefer_cost=True  # Prefer cheaper models for autonomous tasks
+                    prefer_cost=True
                 )
 
+                content = result.get("content", "")
                 actions_taken.append({
                     "item": item,
-                    "result": result.get("content", ""),
-                    "cost": decision.estimated_cost,
-                    "model": decision.model
+                    "result": content if content else "Deterministic fallback: LLM unavailable, action item noted",
+                    "cost": getattr(decision, "estimated_cost", 0.0),
+                    "model": getattr(decision, "model", "fallback")
                 })
 
             except Exception as e:
@@ -568,12 +575,21 @@ def handle_reactive_event(payload: dict):
         loop = asyncio.get_running_loop()
         loop.create_task(_run_and_clear())
     except RuntimeError:
+        if heartbeat.thread and heartbeat.thread.is_alive():
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.call_soon_threadsafe(lambda: asyncio.ensure_future(_run_and_clear()))
+                else:
+                    asyncio.run(_run_and_clear())
+                return
+            except Exception:
+                pass
         try:
             asyncio.run(_run_and_clear())
         except Exception as e:
             logger.error(f"Reactive heartbeat failed: {e}")
     except Exception as e:
-        # create_task failed before the task was scheduled; finally block won't run
         heartbeat._reactive_pending = False
         logger.error(f"Reactive heartbeat failed: {e}")
 

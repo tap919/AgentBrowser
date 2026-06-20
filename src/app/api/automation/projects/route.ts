@@ -18,9 +18,9 @@ export async function GET() {
       tools,
       generatedAt: new Date().toISOString(),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err.message || 'Automation scan failed' },
+      { error: err instanceof Error ? err.message : 'Automation scan failed' },
       { status: 500 }
     );
   }
@@ -43,9 +43,9 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err.message || 'Request failed' },
+      { error: err instanceof Error ? err.message : 'Request failed' },
       { status: 500 }
     );
   }

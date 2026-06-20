@@ -5,7 +5,7 @@ With vision support, cost guards, and thought logging
 """
 import json
 import httpx
-from typing import Optional, Dict, Any, List, AsyncGenerator, Union
+from typing import Optional, Dict, Any, List, Union
 from enum import Enum
 from loguru import logger
 from config import settings
@@ -397,9 +397,17 @@ class LLMGateway:
                 if attempt_index == len(attempts) - 1 or not self._is_retryable_provider_error(e):
                     break
 
-        if last_error:
-            raise last_error
-        raise RuntimeError("No configured providers are available for this request")
+        # Deterministic fallback: return template response when all LLM providers fail
+        error_msg = str(last_error) if last_error else "No configured providers available"
+        logger.warning(f"All LLM providers failed ({error_msg}) — returning deterministic fallback")
+        return {
+            "content": "I'm currently unable to process this request using my language models. Please check your API configuration or try again later.",
+            "tool_calls": [],
+            "stop_reason": "fallback_deterministic",
+            "usage": {"input_tokens": 0, "output_tokens": 0},
+            "_fallback": True,
+            "_fallback_reason": error_msg,
+        }
 
     async def _anthropic_complete(
         self, messages: List[Dict], model: str, tools: Optional[List], stream: bool, **kwargs

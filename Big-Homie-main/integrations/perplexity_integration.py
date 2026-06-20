@@ -3,7 +3,7 @@ Perplexity AI Integration
 Provides advanced AI search and research capabilities with citations
 """
 import httpx
-from typing import Dict, List, Optional, Any
+from typing import List, Optional, Any
 from dataclasses import dataclass
 from loguru import logger
 from config import settings

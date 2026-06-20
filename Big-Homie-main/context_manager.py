@@ -2,12 +2,10 @@
 Context Window Manager - Tier 2 Memory System
 Intelligent context trimming, summarization, and compression
 """
-import json
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass, field
+from typing import List, Dict, Optional, Tuple
+from dataclasses import dataclass
 from datetime import datetime
 from loguru import logger
-from config import settings
 
 
 @dataclass

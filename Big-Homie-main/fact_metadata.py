@@ -3,10 +3,8 @@ Fact Checker & Metadata Tagging for Big Homie
 Self-reflection and automatic log categorization
 """
 import re
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Set
 from datetime import datetime
-from loguru import logger
-from config import settings
 
 class FactChecker:
     """Self-reflection system to identify uncertain claims"""
@@ -103,7 +101,7 @@ class FactChecker:
         """Format fact-checking results as a readable report"""
         confidence_pct = int(analysis["confidence_score"] * 100)
 
-        report = f"## Fact-Check Report\n\n"
+        report = "## Fact-Check Report\n\n"
         report += f"**Overall Confidence**: {confidence_pct}%\n\n"
 
         if not analysis["needs_verification"]:

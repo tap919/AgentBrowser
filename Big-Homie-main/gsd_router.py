@@ -6,7 +6,8 @@ Usage:
     result = await gsd_router.dispatch("@rap make a trap video about hustling")
 """
 from __future__ import annotations
-import asyncio, re
+import asyncio
+import re
 from typing import Any, Dict, Optional
 from loguru import logger
 
