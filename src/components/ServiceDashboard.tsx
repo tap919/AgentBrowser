@@ -131,6 +131,7 @@ export default function ServiceDashboard() {
       };
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      return undefined;
     }
   }, [autoRefresh, fetchAll]);
 

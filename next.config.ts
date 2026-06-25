@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
+      const { NormalModuleReplacementPlugin } = require('webpack');
+      config.plugins.push(new NormalModuleReplacementPlugin(/^node:/, (resource: { request: string }) => {
+        resource.request = resource.request.replace(/^node:/, '');
+      }));
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
