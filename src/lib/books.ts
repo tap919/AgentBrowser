@@ -37,7 +37,7 @@ function bookTitle(filePath: string): string {
 }
 
 async function getPdfText(filePath: string): Promise<string> {
-  const { PDFParse } = await import('pdf-parse');
+  const { PDFParse } = await Function('return import("pdf-parse")')() as { PDFParse: new (opts: { data: Uint8Array }) => { getText(opts: { pageJoiner: string }): Promise<{ text: string }>; destroy(): void } };
   const buf = fs.readFileSync(filePath);
   const parser = new PDFParse({ data: new Uint8Array(buf) });
   const result = await parser.getText({ pageJoiner: '\n\n---\n\n' });
@@ -45,8 +45,11 @@ async function getPdfText(filePath: string): Promise<string> {
   return result.text;
 }
 
+// @ts-ignore - dynamic import hidden from webpack static analysis (epub uses node:fs/promises)
+type EpubConstructor = new (filePath: string) => { parse(): Promise<void>; toc: { id: string }[]; getChapter(id: string): Promise<string> };
+
 async function getEpubText(filePath: string): Promise<string> {
-  const EPub = (await import('epub')).default;
+  const { default: EPub } = await Function('return import("epub")')() as { default: EpubConstructor };
   const book = new EPub(filePath);
   await book.parse();
   const chapters = await Promise.all(
