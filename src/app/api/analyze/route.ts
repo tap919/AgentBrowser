@@ -1,6 +1,7 @@
 import ZAI from 'z-ai-web-dev-sdk';
+import { apiAuthMiddleware } from '@/lib/api-auth-middleware';
 
-export async function POST(request: Request) {
+export const POST = apiAuthMiddleware(async (request: Request) => {
   // Parse body first (outside try) so variables are in scope for fallback
   let projectName = '';
   let description = '';
@@ -97,7 +98,7 @@ Return ONLY valid JSON, no markdown or extra text.`
     // SDK not available — generate a quality fallback analysis from the project inputs
     return Response.json({ analysis: buildFallbackAnalysis(projectName, description, type, audience) });
   }
-}
+});
 
 interface RiskItem {
   name: string;

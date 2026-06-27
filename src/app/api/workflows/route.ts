@@ -5,7 +5,7 @@ import { apiAuthMiddleware } from '@/lib/api-auth-middleware';
 // Ensure workflows are registered
 registerBuiltInWorkflows();
 
-export async function GET(request: Request) {
+export const GET = apiAuthMiddleware(async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
   const runId = searchParams.get('runId');
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       id: r.id, workflowId: r.workflowId, status: r.status, startedAt: r.startedAt,
     })),
   });
-}
+});
 
 export const POST = apiAuthMiddleware(async (request: Request) => {
   try {

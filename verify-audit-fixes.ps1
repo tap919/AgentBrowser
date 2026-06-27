@@ -228,6 +228,46 @@ Check "p1-api-auth-per-key-rate-limit" {
     $true
 }
 
+Check "p1-generate-route-has-auth" {
+    $file = Join-Path $RepoRoot "src/app/api/generate/route.ts"
+    if (-not (Test-Path $file)) { return $true }
+    $content = Get-Content $file -Raw
+    if ($content -notmatch "apiAuthMiddleware") {
+        return "generate POST handler has no auth middleware"
+    }
+    $true
+}
+
+Check "p1-analyze-route-has-auth" {
+    $file = Join-Path $RepoRoot "src/app/api/analyze/route.ts"
+    if (-not (Test-Path $file)) { return $true }
+    $content = Get-Content $file -Raw
+    if ($content -notmatch "apiAuthMiddleware") {
+        return "analyze POST handler has no auth middleware"
+    }
+    $true
+}
+
+Check "p1-proxy-route-has-auth" {
+    $file = Join-Path $RepoRoot "src/app/api/proxy/route.ts"
+    if (-not (Test-Path $file)) { return $true }
+    $content = Get-Content $file -Raw
+    if ($content -notmatch "apiAuthMiddleware") {
+        return "proxy GET handler has no auth middleware"
+    }
+    $true
+}
+
+Check "p1-books-server-only" {
+    $file = Join-Path $RepoRoot "src/lib/books.ts"
+    if (-not (Test-Path $file)) { return $true }
+    $content = Get-Content $file -Raw
+    if ($content -notmatch "server-only") {
+        return "books.ts missing server-only import"
+    }
+    $true
+}
+
 # ============================================================================
 # P1: AUTH BYPASS
 # ============================================================================

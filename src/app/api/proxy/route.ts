@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isIP } from 'net';
 import { resolve4 } from 'dns/promises';
+import { apiAuthMiddleware } from '@/lib/api-auth-middleware';
 
 const MAX_BODY = 10 * 1024 * 1024;
 const FETCH_TIMEOUT = 15_000;
@@ -95,7 +96,7 @@ async function isBlockedHost(urlStr: string): Promise<boolean> {
   }
 }
 
-export async function GET(req: NextRequest) {
+export const GET = apiAuthMiddleware(async (req: NextRequest) => {
   const target = req.nextUrl.searchParams.get('url');
   if (!target) {
     return NextResponse.json({ error: 'Missing ?url= parameter' }, { status: 400 });
@@ -165,4 +166,4 @@ export async function GET(req: NextRequest) {
       err instanceof Error ? err.message : 'Failed to fetch';
     return NextResponse.json({ error: message }, { status: 502 });
   }
-}
+});

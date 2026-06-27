@@ -26,7 +26,7 @@ const getHandler = async (request: Request) => {
   }
 };
 
-export const GET = getHandler;
+export const GET = apiAuthMiddleware(getHandler);
 
 export const POST = apiAuthMiddleware(async (request: Request) => {
   try {

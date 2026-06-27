@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateSite, type GeneratorInput } from '@/lib/generate-site';
+import { apiAuthMiddleware } from '@/lib/api-auth-middleware';
 
 function normalizeText(value: unknown, maxLength: number): string {
   return typeof value === 'string'
@@ -7,7 +8,7 @@ function normalizeText(value: unknown, maxLength: number): string {
     : '';
 }
 
-export async function POST(request: Request) {
+export const POST = apiAuthMiddleware(async (request: Request) => {
   let body: GeneratorInput;
   try {
     body = (await request.json()) as GeneratorInput;
@@ -28,4 +29,4 @@ export async function POST(request: Request) {
 
   const site = generateSite(input);
   return NextResponse.json(site);
-}
+});
