@@ -25,7 +25,14 @@ export type WorkflowStepType =
   | 'upgrade-scan'
   | 'run-pipeline'
   | 'knowledge-search'
-  | 'coding-skill';
+  | 'coding-skill'
+  // Truth-Verified Labor Exchange: BlockLabor + Aetherdesk verification
+  | 'blocklabor-list-jobs'
+  | 'blocklabor-list-workers'
+  | 'blocklabor-rank-workers'
+  | 'blocklabor-verify-business'
+  | 'blocklabor-audit-ghost-jobs'
+  | 'blocklabor-sla-alert';
 
 export interface WorkflowStep {
   id: string;
@@ -42,7 +49,7 @@ export interface WorkflowDefinition {
   id: string;
   name: string;
   description: string;
-  category: 'monitoring' | 'business' | 'development' | 'security' | 'content' | 'research' | 'knowledge';
+  category: 'monitoring' | 'business' | 'development' | 'security' | 'content' | 'research' | 'knowledge' | 'labor';
   tags: string[];
   schedule?: string | null;
   steps: WorkflowStep[];
@@ -289,6 +296,62 @@ async function executeStep(
             query: step.config.query as string | undefined,
             limit: step.config.limit as number | undefined,
             params: (step.config.params || {}) as Record<string, unknown>,
+          });
+          break;
+        }
+
+        case 'blocklabor-list-jobs': {
+          const { listOpenJobs } = await import('@/lib/service-hub');
+          output = await listOpenJobs((step.config.filters || {}) as Record<string, unknown>);
+          break;
+        }
+
+        case 'blocklabor-list-workers': {
+          const { listWorkerProfiles } = await import('@/lib/service-hub');
+          output = await listWorkerProfiles((step.config.filters || {}) as Record<string, unknown>);
+          break;
+        }
+
+        case 'blocklabor-rank-workers': {
+          const { rankWorkersForJob } = await import('@/lib/service-hub');
+          output = await rankWorkersForJob(
+            step.config.jobId as string,
+            step.config.topK as number | undefined,
+          );
+          break;
+        }
+
+        case 'blocklabor-verify-business': {
+          const { requestBusinessIdentityVerification } = await import('@/lib/service-hub');
+          output = await requestBusinessIdentityVerification({
+            businessName: step.config.businessName as string,
+            businessPhone: step.config.businessPhone as string,
+            businessEin: step.config.businessEin as string,
+            businessState: step.config.businessState as string,
+            tenantId: step.config.tenantId as string,
+          });
+          break;
+        }
+
+        case 'blocklabor-audit-ghost-jobs': {
+          const { requestGhostJobAudit } = await import('@/lib/service-hub');
+          output = await requestGhostJobAudit({
+            jobId: step.config.jobId as string,
+            businessPhone: step.config.businessPhone as string,
+            jobTitle: step.config.jobTitle as string,
+            tenantId: step.config.tenantId as string,
+          });
+          break;
+        }
+
+        case 'blocklabor-sla-alert': {
+          const { requestApplicationSlaAlert } = await import('@/lib/service-hub');
+          output = await requestApplicationSlaAlert({
+            jobId: step.config.jobId as string,
+            businessPhone: step.config.businessPhone as string,
+            applicantName: step.config.applicantName as string,
+            slaHoursBreached: step.config.slaHoursBreached as number,
+            tenantId: step.config.tenantId as string,
           });
           break;
         }
@@ -653,6 +716,138 @@ const DAILY_CODING_DIGEST: WorkflowDefinition = {
   ],
 };
 
+// ─── Truth-Verified Labor Exchange: BlockLabor workflows ───
+
+const LABOR_VERIFY_NEW_BUSINESS: WorkflowDefinition = {
+  id: 'labor-verify-new-business',
+  name: 'Verify New Business Identity',
+  description: 'Called whenever a new business signs up on BlockLabor. Triggers an outbound call via Aetherdesk to verify EIN and state registration. Bumps the businesses.trust_tier from T1 (pending) to T3 (verified).',
+  category: 'labor',
+  tags: ['blocklabor', 'aetherdesk', 'verification', 'onboarding'],
+  schedule: null,
+  steps: [
+    {
+      id: 'verify-business',
+      type: 'blocklabor-verify-business',
+      label: 'Aetherdesk outbound call: verify EIN + state',
+      config: {
+        businessName: '{{ business.name }}',
+        businessPhone: '{{ business.phone }}',
+        businessEin: '{{ business.ein }}',
+        businessState: '{{ business.state }}',
+        tenantId: '{{ business.tenant_id }}',
+      },
+      dependsOn: [],
+    },
+    {
+      id: 'cache-result',
+      type: 'memory-write',
+      label: 'Cache verification result for CRM',
+      config: {
+        namespace: 'labor',
+        key: 'verify:{{ business.id }}',
+        value: {},
+        ttl: 2592000,
+      },
+      dependsOn: ['verify-business'],
+    },
+  ],
+};
+
+const LABOR_RANK_AND_NOTIFY: WorkflowDefinition = {
+  id: 'labor-rank-and-notify',
+  name: 'Rank Workers + Notify Top Matches',
+  description: 'Triggered when a new job is posted. Calls BlockLabor rankWorkersForJob (which uses reporank logic), then writes the top-K candidate list to memory for the contractor portal.',
+  category: 'labor',
+  tags: ['blocklabor', 'reporank', 'matching', 'notifications'],
+  schedule: null,
+  steps: [
+    {
+      id: 'rank-workers',
+      type: 'blocklabor-rank-workers',
+      label: 'BlockLabor: rank top-5 workers for job',
+      config: {
+        jobId: '{{ job.id }}',
+        topK: 5,
+      },
+      dependsOn: [],
+    },
+    {
+      id: 'cache-shortlist',
+      type: 'memory-write',
+      label: 'Cache shortlist for contractor portal',
+      config: {
+        namespace: 'labor',
+        key: 'shortlist:{{ job.id }}',
+        value: {},
+        ttl: 86400,
+      },
+      dependsOn: ['rank-workers'],
+    },
+  ],
+};
+
+const LABOR_DAILY_GHOST_JOB_AUDIT: WorkflowDefinition = {
+  id: 'labor-daily-ghost-job-audit',
+  name: 'Daily Ghost-Job Audit',
+  description: 'Runs daily. For every open job that has been active for 3+ days, calls Aetherdesk to place an outbound call confirming the job is still live. This is the consumer of BlockLabor\'s pg_cron ghost-job-audit edge function.',
+  category: 'labor',
+  tags: ['blocklabor', 'aetherdesk', 'integrity', 'cron'],
+  schedule: '0 14 */3 * *',
+  steps: [
+    {
+      id: 'list-candidates',
+      type: 'blocklabor-list-jobs',
+      label: 'BlockLabor: list open jobs older than 3 days',
+      config: { filters: { status: 'open', olderThanDays: 3 } },
+      dependsOn: [],
+    },
+    {
+      id: 'audit-each',
+      type: 'blocklabor-audit-ghost-jobs',
+      label: 'Aetherdesk: place audit call for each job',
+      config: {
+        jobId: '{{ jobs[0].id }}',
+        businessPhone: '{{ jobs[0].business_phone }}',
+        jobTitle: '{{ jobs[0].title }}',
+        tenantId: 'blocklabor-default',
+      },
+      dependsOn: ['list-candidates'],
+    },
+  ],
+};
+
+const LABOR_SLA_WATCHDOG: WorkflowDefinition = {
+  id: 'labor-sla-watchdog',
+  name: 'Application SLA Watchdog',
+  description: 'Runs every 6 hours. For every job whose application_response_sla has passed without a hire decision, alerts the employer via Aetherdesk. Driven by BlockLabor\'s pg_cron application-sla-monitor edge function.',
+  category: 'labor',
+  tags: ['blocklabor', 'aetherdesk', 'sla', 'cron'],
+  schedule: '0 */6 * * *',
+  steps: [
+    {
+      id: 'list-sla-breaches',
+      type: 'blocklabor-list-jobs',
+      label: 'BlockLabor: list jobs past SLA',
+      config: { filters: { status: 'open', slaBreached: true } },
+      dependsOn: [],
+    },
+    {
+      id: 'alert-employer',
+      type: 'blocklabor-sla-alert',
+      label: 'Aetherdesk: outbound SLA alert call',
+      config: {
+        jobId: '{{ jobs[0].id }}',
+        businessPhone: '{{ jobs[0].business_phone }}',
+        applicantName: 'Top applicant',
+        slaHoursBreached: 24,
+        tenantId: 'blocklabor-default',
+      },
+      dependsOn: ['list-sla-breaches'],
+    },
+  ],
+};
+
 // Register all built-in workflows
 export function registerBuiltInWorkflows(): void {
   registerWorkflow(COMPETITIVE_MONITOR);
@@ -668,4 +863,9 @@ export function registerBuiltInWorkflows(): void {
   registerWorkflow(DISTRIBUTED_SYSTEMS_WORKFLOW);
   registerWorkflow(SECURITY_WORKFLOW);
   registerWorkflow(DAILY_CODING_DIGEST);
+  // Truth-Verified Labor Exchange workflows
+  registerWorkflow(LABOR_VERIFY_NEW_BUSINESS);
+  registerWorkflow(LABOR_RANK_AND_NOTIFY);
+  registerWorkflow(LABOR_DAILY_GHOST_JOB_AUDIT);
+  registerWorkflow(LABOR_SLA_WATCHDOG);
 }

@@ -1,5 +1,6 @@
 import type { SecurityLevel, SecurityResult, SecurityEvent } from '@/features/security/types';
 import { checkPromptInjection, scanForSecrets } from './claw-protect-client';
+import { db } from '@/lib/db';
 
 const CACHE_TTL = 300000;
 const MAX_CACHE_SIZE = 1000;
@@ -194,10 +195,52 @@ export class SecurityMiddleware {
     if (this.events.length > this.MAX_EVENTS) {
       this.events = this.events.slice(-Math.floor(this.MAX_EVENTS * 0.8));
     }
+    void this.persistEvent(event);
   }
 
-  getEvents(): SecurityEvent[] {
-    return [...this.events];
+  private async persistEvent(event: SecurityEvent): Promise<void> {
+    try {
+      await db.agentEvent.create({
+        data: {
+          id: event.id,
+          type: 'security_audit',
+          source: 'security-middleware',
+          timestamp: event.timestamp instanceof Date ? event.timestamp : new Date(event.timestamp),
+          payload: JSON.stringify({
+            action: event.action,
+            result: event.result,
+          }),
+          durable: true,
+        },
+      });
+    } catch (err) {
+      console.error('[SecurityMiddleware] Failed to persist event:', err);
+    }
+  }
+
+  async getEvents(options?: { limit?: number }): Promise<SecurityEvent[]> {
+    const limit = options?.limit ?? 200;
+    try {
+      const records = await db.agentEvent.findMany({
+        where: { type: 'security_audit' },
+        orderBy: { timestamp: 'desc' },
+        take: limit,
+      });
+      if (records.length > 0) {
+        return records.map((r) => {
+          const payload = JSON.parse(r.payload) as { action: string; result: SecurityResult };
+          return {
+            id: r.id,
+            timestamp: r.timestamp,
+            action: payload.action,
+            result: payload.result,
+          };
+        });
+      }
+    } catch (err) {
+      console.error('[SecurityMiddleware] DB read failed, using memory:', err);
+    }
+    return [...this.events].reverse().slice(0, limit);
   }
 }
 

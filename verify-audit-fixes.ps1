@@ -175,6 +175,59 @@ Check "p0-caddyfile-no-open-proxy" {
     $true
 }
 
+Check "p0-proxy-no-allowall-framing" {
+    $file = Join-Path $RepoRoot "src/app/api/proxy/route.ts"
+    if (-not (Test-Path $file)) { return $true }
+    $content = Get-Content $file -Raw
+    if ($content -match "ALLOWALL") {
+        return "proxy route still sets X-Frame-Options: ALLOWALL (clickjacking)"
+    }
+    if ($content -notmatch "X-Frame-Options.*DENY|frame-ancestors") {
+        return "proxy route missing clickjacking protection headers"
+    }
+    $true
+}
+
+Check "p0-proxy-sanitizes-upstream-headers" {
+    $file = Join-Path $RepoRoot "src/app/api/proxy/route.ts"
+    if (-not (Test-Path $file)) { return $true }
+    $content = Get-Content $file -Raw
+    if ($content -notmatch "SAFE_RESPONSE_HEADERS|buildSafeResponseHeaders|sanitizeContentType") {
+        return "proxy route does not whitelist/sanitize upstream response headers"
+    }
+    $true
+}
+
+Check "p1-proxy-ssrf-dns-resolution" {
+    $file = Join-Path $RepoRoot "src/app/api/proxy/route.ts"
+    if (-not (Test-Path $file)) { return $true }
+    $content = Get-Content $file -Raw
+    if ($content -notmatch "resolve4|isBlockedHost") {
+        return "proxy route missing DNS-based SSRF guard"
+    }
+    $true
+}
+
+Check "p1-security-events-rate-limited" {
+    $file = Join-Path $RepoRoot "src/app/api/security/events/route.ts"
+    if (-not (Test-Path $file)) { return $true }
+    $content = Get-Content $file -Raw
+    if ($content -notmatch "checkRateLimit|rateLimit") {
+        return "security/events route has no rate limiting"
+    }
+    $true
+}
+
+Check "p1-api-auth-per-key-rate-limit" {
+    $file = Join-Path $RepoRoot "src/lib/api-auth-middleware.ts"
+    if (-not (Test-Path $file)) { return $true }
+    $content = Get-Content $file -Raw
+    if ($content -notmatch "checkRateLimit") {
+        return "api-auth-middleware has no per-key rate limiting"
+    }
+    $true
+}
+
 # ============================================================================
 # P1: AUTH BYPASS
 # ============================================================================

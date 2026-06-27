@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { checkServiceHealth, checkAllServices, SERVICES, preBuildAudit, requireService } from '@/lib/service-hub';
+import { checkServiceHealth, checkAllServices, SERVICES, preBuildAudit, requireService, BLOCKLABOR_API_PREFIX } from '@/lib/service-hub';
 
 describe('service-hub', () => {
   beforeEach(() => {
@@ -77,8 +77,8 @@ describe('service-hub', () => {
   });
 
   describe('SERVICES registry', () => {
-    it('has exactly 3 services', () => {
-      expect(SERVICES).toHaveLength(3);
+    it('has exactly 4 services', () => {
+      expect(SERVICES).toHaveLength(4);
     });
 
     it('each service has required fields', () => {
@@ -105,6 +105,12 @@ describe('service-hub', () => {
     it('reporank is on port 3001', () => {
       const rr = SERVICES.find(s => s.id === 'reporank');
       expect(rr?.port).toBe(3001);
+    });
+
+    it('blocklabor uses /api/labor health endpoint on port 3000', () => {
+      const bl = SERVICES.find(s => s.id === 'blocklabor');
+      expect(bl?.port).toBe(3000);
+      expect(bl?.healthEndpoint).toBe(`${BLOCKLABOR_API_PREFIX}/health`);
     });
 
     it('no two services share the same port', () => {

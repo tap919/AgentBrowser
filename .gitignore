@@ -145,6 +145,20 @@ VibeServe-main/.env
 
 # Release binaries
 /Claw-Protect-main/release/
+**/release/
+**/dist/
+**/build/
+**/out/
+**/.next/
+
+# Electron app bundles (already huge; should never be in git)
+*.exe
+*.asar
+*.dmg
+*.app
+*.deb
+*.rpm
+*.snap
 
 # Generated files
 hfa_bulk_upload.xlsxscheduler_test.logscheduler_test_err.log

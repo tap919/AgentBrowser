@@ -11,8 +11,60 @@ const PRIVATE_RANGES = [
   /^192\.168\./, /^172\.(1[6-9]|2\d|3[01])\./,
 ];
 
+/** Headers safe to forward from upstream — strips cookies, framing overrides, etc. */
+const SAFE_RESPONSE_HEADERS = new Set([
+  'content-type',
+  'content-length',
+  'content-encoding',
+  'cache-control',
+  'etag',
+  'last-modified',
+  'expires',
+]);
+
+const ALLOWED_CONTENT_TYPES = new Set([
+  'text/html',
+  'text/plain',
+  'application/xhtml+xml',
+  'application/json',
+  'application/xml',
+  'text/xml',
+  'image/',
+  'font/',
+  'application/javascript',
+  'text/css',
+]);
+
 function isPrivateIP(ip: string): boolean {
   return PRIVATE_RANGES.some(re => re.test(ip));
+}
+
+function sanitizeContentType(raw: string | null): string {
+  if (!raw) return 'text/plain; charset=utf-8';
+  const base = raw.split(';')[0].trim().toLowerCase();
+  const allowed = [...ALLOWED_CONTENT_TYPES].some(
+    (prefix) => base === prefix || (prefix.endsWith('/') && base.startsWith(prefix)),
+  );
+  return allowed ? raw : 'text/plain; charset=utf-8';
+}
+
+function buildSafeResponseHeaders(upstream: Response, isHtml: boolean): Headers {
+  const headers = new Headers();
+  for (const [key, value] of upstream.headers.entries()) {
+    if (SAFE_RESPONSE_HEADERS.has(key.toLowerCase())) {
+      headers.set(key, value);
+    }
+  }
+  headers.set('Content-Type', sanitizeContentType(upstream.headers.get('content-type')));
+  headers.set('Cache-Control', headers.get('Cache-Control') ?? 'public, max-age=300');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('Content-Security-Policy', "frame-ancestors 'none'");
+  headers.set('X-Content-Type-Options', 'nosniff');
+  if (isHtml) {
+    headers.delete('Content-Security-Policy');
+    headers.set('Content-Security-Policy', "frame-ancestors 'none'; default-src 'self' https: http: data: blob: 'unsafe-inline' 'unsafe-eval'");
+  }
+  return headers;
 }
 
 /** Reject URLs that point at private / internal IPs (SSRF guard, with DNS resolution). */
@@ -29,14 +81,12 @@ async function isBlockedHost(urlStr: string): Promise<boolean> {
     if (isIP(hostname)) {
       return isPrivateIP(hostname);
     }
-    // Resolve DNS to catch hostnames pointing at private IPs (SSRF bypass prevention)
     try {
       const addresses = await resolve4(hostname);
       if (addresses.some(addr => isPrivateIP(addr))) {
         return true;
       }
     } catch {
-      // DNS resolution failed — reject to be safe
       return true;
     }
     return false;
@@ -51,7 +101,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing ?url= parameter' }, { status: 400 });
   }
 
-  // Only allow http(s) schemes
   if (!/^https?:\/\//i.test(target)) {
     return NextResponse.json({ error: 'Only http/https URLs are allowed' }, { status: 400 });
   }
@@ -77,19 +126,16 @@ export async function GET(req: NextRequest) {
       });
 
       const ct = upstream.headers.get('content-type') ?? 'text/html';
+      const isHtml = ct.includes('text/html') || ct.includes('application/xhtml');
 
-      // For non-HTML content, just stream it through
-      if (!ct.includes('text/html') && !ct.includes('application/xhtml')) {
+      if (!isHtml) {
         const body = await upstream.arrayBuffer();
         if (body.byteLength > MAX_BODY) {
           return NextResponse.json({ error: 'Response too large' }, { status: 413 });
         }
         return new NextResponse(body, {
           status: upstream.status,
-          headers: {
-            'Content-Type': ct,
-            'Cache-Control': 'public, max-age=300',
-          },
+          headers: buildSafeResponseHeaders(upstream, false),
         });
       }
 
@@ -98,7 +144,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Response too large' }, { status: 413 });
       }
 
-      // Inject <base> so relative URLs resolve against the original domain
       const origin = new URL(target);
       const baseHref = `${origin.protocol}//${origin.host}${origin.port ? ':' + origin.port : ''}`;
       if (!/<base\b/i.test(html)) {
@@ -110,12 +155,7 @@ export async function GET(req: NextRequest) {
 
       return new NextResponse(html, {
         status: upstream.status,
-        headers: {
-          'Content-Type': ct,
-          'Cache-Control': 'public, max-age=300',
-          // Explicitly allow framing
-          'X-Frame-Options': 'ALLOWALL',
-        },
+        headers: buildSafeResponseHeaders(upstream, true),
       });
     } finally {
       clearTimeout(timer);

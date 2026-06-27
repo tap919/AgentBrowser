@@ -15,6 +15,15 @@ vi.mock('@/lib/claw-protect-client', () => ({
   }),
 }));
 
+vi.mock('@/lib/db', () => ({
+  db: {
+    agentEvent: {
+      create: vi.fn(async () => ({})),
+      findMany: vi.fn(async () => []),
+    },
+  },
+}));
+
 const { securityMiddleware } = await import('@/lib/security-middleware');
 
 describe('SecurityMiddleware — Integration', () => {
@@ -61,7 +70,7 @@ describe('SecurityMiddleware — Integration', () => {
 
   it('events are emitted with proper structure', async () => {
     await securityMiddleware.validateAction('phase:1:research', { _tier: 'full' });
-    const events = securityMiddleware.getEvents();
+    const events = await securityMiddleware.getEvents();
     const lastEvent = events[events.length - 1];
     expect(lastEvent).toHaveProperty('id');
     expect(lastEvent).toHaveProperty('timestamp');

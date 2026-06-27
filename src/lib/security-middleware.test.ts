@@ -1,9 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock claw-protect-client
 vi.mock('@/lib/claw-protect-client', () => ({
   checkPromptInjection: vi.fn(async () => ({ detected: false, warnings: [] })),
   scanForSecrets: vi.fn(async () => []),
+}));
+
+vi.mock('@/lib/db', () => ({
+  db: {
+    agentEvent: {
+      create: vi.fn(async () => ({})),
+      findMany: vi.fn(async () => []),
+    },
+  },
 }));
 
 const { securityMiddleware } = await import('@/lib/security-middleware');
@@ -44,9 +52,9 @@ describe('SecurityMiddleware', () => {
   });
 
   it('logs events and retrieves them', async () => {
-    const before = securityMiddleware.getEvents().length;
+    const before = (await securityMiddleware.getEvents()).length;
     await securityMiddleware.validateAction('test:log', { _tier: 'full' });
-    const after = securityMiddleware.getEvents().length;
+    const after = (await securityMiddleware.getEvents()).length;
     expect(after).toBeGreaterThan(before);
   });
 
@@ -61,7 +69,7 @@ describe('SecurityMiddleware', () => {
     expect(result).toHaveProperty('blockedReasons');
   });
 
-  it('MAX_EVENTS caps the event log', () => {
+  it('MAX_EVENTS caps the event log', async () => {
     for (let i = 0; i < 600; i++) {
       securityMiddleware.logEvent({
         id: `e-${i}`, timestamp: new Date(), action: 'test', result: {
@@ -69,6 +77,6 @@ describe('SecurityMiddleware', () => {
         },
       });
     }
-    expect(securityMiddleware.getEvents().length).toBeLessThanOrEqual(500);
+    expect((await securityMiddleware.getEvents()).length).toBeLessThanOrEqual(500);
   });
 });

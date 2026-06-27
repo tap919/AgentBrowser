@@ -4,10 +4,17 @@ import { agentEventBus } from '@/lib/agent-event-bus';
 // Set via AGENT_API_KEY env var — must match MUTLY_API_KEY.
 const MASTER_API_KEY = typeof process !== 'undefined' ? (process.env.AGENT_API_KEY || '') : '';
 
+/** BlockLabor Vite labor-api plugin mounts at /api/labor/* (see vite/labor-api.ts). */
+export const BLOCKLABOR_API_PREFIX = '/api/labor';
+
+const BLOCKLABOR_PORT = typeof process !== 'undefined'
+  ? Number(process.env.BLOCKLABOR_PORT || process.env.VITE_BLOCKLABOR_PORT || 3000)
+  : 3000;
+
 export interface ServiceDefinition {
   id: string;
   name: string;
-  type: 'mutly' | 'vibeserve' | 'reporank';
+  type: 'mutly' | 'vibeserve' | 'reporank' | 'blocklabor';
   port: number;
   healthEndpoint: string;
   apiKey?: string;
@@ -49,6 +56,25 @@ export const SERVICES: ServiceDefinition[] = [
     healthEndpoint: '/api/reporank/health',
     status: 'unknown',
     capabilities: ['project-scoring', 'quality-audit', 'code-analysis', 'task-generation'],
+  }),
+  // BlockLabor runs on Vite (default port 3000 via package.json dev script).
+  // Orchestrator JSON API: /api/labor/* (vite/labor-api.ts plugin).
+  populateApiKey({
+    id: 'blocklabor',
+    name: 'BlockLabor',
+    type: 'blocklabor',
+    port: BLOCKLABOR_PORT,
+    healthEndpoint: `${BLOCKLABOR_API_PREFIX}/health`,
+    status: 'unknown',
+    capabilities: [
+      'worker-profiles',
+      'job-postings',
+      'verified-stamp',
+      'business-verification',
+      'ghost-job-audit',
+      'application-sla',
+      'trust-tier',
+    ],
   }),
 ];
 
@@ -267,6 +293,128 @@ export async function runRepoDrift(projectId: string, data?: Record<string, unkn
 
 export async function getFullScanResult(scanId: string): Promise<unknown> {
   return callReporank('GET', `/scan/${scanId}`, undefined, 10000);
+}
+
+// ─── BlockLabor (Truth-Verified Labor Marketplace) ───
+//
+// BlockLabor runs on Vite's default port (5173) and exposes a small
+// surface for orchestrator-level operations. The full marketplace UI
+// runs in the browser; from the workflow engine we only call the
+// JSON API.
+//
+// Routing: We try the Mutly gateway first (proxy: /api/blocklabor/*),
+// then fall back to direct calls. This mirrors how reporank is
+// routed, keeping Mutly the single fan-out point when it is up.
+
+function buildBlocklaborUrl(port: number, endpoint: string, query?: Record<string, unknown>): string {
+  const blPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = new URL(`http://127.0.0.1:${port}${BLOCKLABOR_API_PREFIX}${blPath}`);
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== null) {
+        url.searchParams.set(key, String(value));
+      }
+    }
+  }
+  return url.toString();
+}
+
+async function callBlocklabor(
+  method: string,
+  endpoint: string,
+  body?: unknown,
+  timeout = 15000,
+  query?: Record<string, unknown>,
+): Promise<unknown> {
+  const queryParams = query ?? (method === 'GET' && body && typeof body === 'object'
+    ? body as Record<string, unknown>
+    : undefined);
+
+  // Try via Mutly gateway first (when proxy is implemented)
+  try {
+    const mutly = requireService('mutly');
+    const mutlyPath = `/api/blocklabor${endpoint}`;
+    const mutlyUrl = new URL(`http://127.0.0.1:${mutly.port}${mutlyPath}`);
+    if (queryParams) {
+      for (const [key, value] of Object.entries(queryParams)) {
+        if (value !== undefined && value !== null) mutlyUrl.searchParams.set(key, String(value));
+      }
+    }
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (mutly.apiKey) headers['X-Mutly-API-Key'] = mutly.apiKey;
+    const res = await fetch(mutlyUrl.toString(), {
+      method, headers,
+      body: method !== 'GET' && body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(timeout),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Mutly proxy: ${res.status}`);
+    return data.result ?? data;
+  } catch {
+    // Fallback: direct BlockLabor call via Vite labor-api plugin
+    const bl = requireService('blocklabor');
+    const directHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (bl.apiKey) directHeaders['Authorization'] = `Bearer ${bl.apiKey}`;
+    const directRes = await fetch(buildBlocklaborUrl(bl.port, endpoint, queryParams), {
+      method, headers: directHeaders,
+      body: method !== 'GET' && body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(timeout),
+    });
+    if (!directRes.ok) throw new Error(`BlockLabor direct: ${directRes.status}`);
+    return directRes.json();
+  }
+}
+
+// Worker profile operations
+export async function getWorkerProfile(workerId: string): Promise<unknown> {
+  return callBlocklabor('GET', `/workers/${workerId}`, undefined, 10000);
+}
+
+export async function listWorkerProfiles(filters?: Record<string, unknown>): Promise<unknown> {
+  return callBlocklabor('GET', '/workers', filters, 10000);
+}
+
+// Job posting + matching
+export async function getJobPosting(jobId: string): Promise<unknown> {
+  return callBlocklabor('GET', `/jobs/${jobId}`, undefined, 10000);
+}
+
+export async function listOpenJobs(filters?: Record<string, unknown>): Promise<unknown> {
+  return callBlocklabor('GET', '/jobs', filters, 10000);
+}
+
+export async function rankWorkersForJob(jobId: string, topK?: number): Promise<unknown> {
+  return callBlocklabor('POST', `/jobs/${jobId}/rank`, { topK: topK ?? 5 }, 20000);
+}
+
+// Verification surface (Aetherdesk-backed)
+export async function requestBusinessIdentityVerification(payload: {
+  businessName: string;
+  businessPhone: string;
+  businessEin: string;
+  businessState: string;
+  tenantId: string;
+}): Promise<unknown> {
+  return callBlocklabor('POST', '/verification/business-identity', payload, 15000);
+}
+
+export async function requestGhostJobAudit(payload: {
+  jobId: string;
+  businessPhone: string;
+  jobTitle: string;
+  tenantId: string;
+}): Promise<unknown> {
+  return callBlocklabor('POST', '/verification/ghost-job-audit', payload, 15000);
+}
+
+export async function requestApplicationSlaAlert(payload: {
+  jobId: string;
+  businessPhone: string;
+  applicantName: string;
+  slaHoursBreached: number;
+  tenantId: string;
+}): Promise<unknown> {
+  return callBlocklabor('POST', '/verification/application-sla-breach', payload, 15000);
 }
 
 // ─── Unified Pipeline: RepoRank → Mutly → AgentBrowser ───
