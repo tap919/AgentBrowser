@@ -38,7 +38,11 @@ function AppContent() {
     return () => window.removeEventListener('ab:settings-changed', handler);
   }, []);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    const mode = new URLSearchParams(window.location.search).get('mode') as WorkspaceMode | null;
+    if (mode) setWorkspaceMode(mode);
+  }, []);
 
   const isEasyMode = appSettings.mode === 'easy';
 

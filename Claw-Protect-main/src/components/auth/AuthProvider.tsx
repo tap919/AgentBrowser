@@ -53,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return () => unsubscribeData();
     }
+    return undefined;
   }, [user]);
 
   return (

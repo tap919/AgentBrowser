@@ -53,11 +53,12 @@ function runAutomationScript(
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(process.cwd(), 'mini-services', 'music-rights', scriptName);
     
-    // Spawn ts-node command
-    onLog(`Spawning subprocess: npx ts-node ${scriptName}...`);
+    onLog(`Spawning subprocess: ts-node ${scriptName}...`);
+    const nodeDir = path.dirname(process.execPath);
+    const npxPath = path.join(nodeDir, 'npx.cmd');
     const proc = spawn(
-      'npx',
-      ['-p', 'ts-node', '-p', 'typescript', 'ts-node', scriptPath],
+      'cmd.exe',
+      ['/c', npxPath, 'ts-node', scriptPath],
       { stdio: ['pipe', 'pipe', 'pipe'] }
     );
 
@@ -172,9 +173,14 @@ async function postHandler(req: Request) {
   const workerPromise = (async () => {
     try {
       if (action === 'extract') {
-        const ascapUser = body.ascapUser as string;
-        const ascapPass = body.ascapPass as string;
-        const mlcEmail = body.mlcEmail as string;
+        const ascapUser = (body.ascapUser as string) || process.env.ASCAP_USERNAME || '';
+        const ascapPass = (body.ascapPass as string) || process.env.ASCAP_PASSWORD || '';
+        const mlcEmail = (body.mlcEmail as string) || process.env.MLC_EMAIL || '';
+        const mlcPass = (body.mlcPass as string) || process.env.MLC_PASSWORD || '';
+        const gmailUserAscap = (body.gmailUserAscap as string) || process.env.GMAIL_USER_ASCAP || 'ncsound919@gmail.com';
+        const gmailAppPasswordAscap = (body.gmailAppPasswordAscap as string) || process.env.GMAIL_APP_PASSWORD_ASCAP || '';
+        const gmailUserMlc = (body.gmailUserMlc as string) || process.env.GMAIL_USER_MLC || 'tap45000@gmail.com';
+        const gmailAppPasswordMlc = (body.gmailAppPasswordMlc as string) || process.env.GMAIL_APP_PASSWORD_MLC || '';
 
         await sendEvent('session', { sessionId });
         await logToClient(`Session created. ID: ${sessionId}`);
@@ -185,7 +191,7 @@ async function postHandler(req: Request) {
         try {
           await runAutomationScript(
             'ascap-extract.ts',
-            { username: ascapUser, password: ascapPass },
+            { username: ascapUser, password: ascapPass, gmailUser: gmailUserAscap, gmailAppPassword: gmailAppPasswordAscap },
             logToClient,
             async (type, data: unknown) => {
               if (type === 'ascap-catalog') {
@@ -206,7 +212,7 @@ async function postHandler(req: Request) {
         try {
           await runAutomationScript(
             'mlc-extract.ts',
-            { email: mlcEmail, sessionId },
+            { email: mlcEmail, password: mlcPass, sessionId, gmailUser: gmailUserMlc, gmailAppPassword: gmailAppPasswordMlc },
             logToClient,
             async (type, data: unknown) => {
               if (type === 'mlc-catalog') {

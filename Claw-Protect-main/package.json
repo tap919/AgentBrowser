@@ -59,6 +59,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@blocklabor/configs": "file:../../../packages/configs",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/express": "^4.17.21",

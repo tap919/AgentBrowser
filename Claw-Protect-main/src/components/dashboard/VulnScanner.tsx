@@ -199,9 +199,9 @@ export function VulnScanner() {
                                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
                                 <span className="font-mono text-sm font-semibold">{agent.name}</span>
                                 <Badge variant="outline" className="text-[9px]">{agent.type}</Badge>
-                                {agent.metadata?.framework && (
+                                {Boolean(agent.metadata?.framework) && (
                                   <Badge variant="secondary" className="text-[9px]">
-                                    {String(agent.metadata.framework)}
+                                    {agent.metadata.framework as React.ReactNode}
                                   </Badge>
                                 )}
                               </div>

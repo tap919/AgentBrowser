@@ -86,9 +86,10 @@ export default function MusicRightsPanel() {
     addLog('Initiating Music Rights Extraction API connection...');
 
     try {
+      const authHeader = { 'Content-Type': 'application/json', 'X-Agent-Auth': process.env.NEXT_PUBLIC_AGENT_API_KEY || '' };
       const response = await fetch('/api/music-rights', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeader,
         body: JSON.stringify({
           action: 'extract',
           ascapUser,
@@ -188,7 +189,7 @@ export default function MusicRightsPanel() {
     try {
       const response = await fetch('/api/music-rights/mfa', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Agent-Auth': process.env.NEXT_PUBLIC_AGENT_API_KEY || '' },
         body: JSON.stringify({ sessionId, code: mfaCode })
       });
 
@@ -235,7 +236,7 @@ export default function MusicRightsPanel() {
     try {
       const response = await fetch('/api/music-rights', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Agent-Auth': process.env.NEXT_PUBLIC_AGENT_API_KEY || '' },
         body: JSON.stringify({
           action: 'upload',
           hfaEmail,
@@ -485,7 +486,7 @@ export default function MusicRightsPanel() {
                   setStep(2);
                   addLog('Reading cached data files from project workspace...');
                   try {
-                    const res = await fetch('/api/music-rights?cached=true');
+                    const res = await fetch('/api/music-rights?cached=true', { headers: { 'X-Agent-Auth': process.env.NEXT_PUBLIC_AGENT_API_KEY || '' } });
                     const data = await res.json();
                     if (data.error) throw new Error(data.error);
 

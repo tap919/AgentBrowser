@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+import { apiAuthMiddleware } from '@/lib/api-auth-middleware';
 import { sessions } from '../route';
 
-export async function POST(req: Request) {
+async function handler(req: Request) {
   try {
     const { sessionId, code } = await req.json();
 
@@ -22,3 +23,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 });
   }
 }
+
+export const POST = apiAuthMiddleware(handler);

@@ -1,0 +1,34 @@
+{
+  "_comment": "Deterministic fallback matrix for all LLM-dependent paths. Each provider has a priority list and a final non-LLM fallback.",
+  "llm": {
+    "priority": ["openai", "anthropic", "openrouter", "ollama"],
+    "fallback": "template",
+    "template_responses": {
+      "default": "I'm currently unable to process this request using my language models. Please check your API configuration or try again later.",
+      "health_check": "OK (deterministic fallback — LLM unavailable)",
+      "action_items": [],
+      "system_status": "degraded"
+    }
+  },
+  "security": {
+    "priority": ["claw-protect", "local-scan"],
+    "fallback": "allow-with-warning"
+  },
+  "pipeline": {
+    "priority": ["dag-orchestrator", "sequential"],
+    "fallback": "noop"
+  },
+  "agent_execution": {
+    "priority": ["big-homie", "local-preset", "noop"],
+    "fallback": "noop"
+  },
+  "heartbeat": {
+    "priority": ["llm", "rule-based"],
+    "rules": {
+      "action_items_empty": true,
+      "skip_on_cost_limit": true,
+      "log_only_on_error": true
+    },
+    "fallback": "skip-cycle"
+  }
+}

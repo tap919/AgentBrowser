@@ -68,9 +68,9 @@ export interface FeedMetadata {
 // Database Singleton
 // ─────────────────────────────────────────────────────────────────────────────
 
-let _db: Database.Database | null = null;
+let _db: InstanceType<typeof Database> | null = null;
 
-export function getDb(): Database.Database {
+export function getDb(): InstanceType<typeof Database> {
   if (_db) return _db;
 
   _db = new Database(DB_PATH);
@@ -86,7 +86,7 @@ export function getDb(): Database.Database {
 // Migrations
 // ─────────────────────────────────────────────────────────────────────────────
 
-function migrate(db: Database.Database): void {
+function migrate(db: InstanceType<typeof Database>): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_version (
       version INTEGER PRIMARY KEY,

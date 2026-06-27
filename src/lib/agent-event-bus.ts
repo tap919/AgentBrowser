@@ -34,7 +34,11 @@ class AgentEventBus {
       this.recentEvents = this.recentEvents.slice(0, this.MAX_RECENT);
     }
 
-    this.emitter.emit(type, event);
+    try {
+      this.emitter.emit(type, event);
+    } catch {
+      // Node.js EventEmitter throws on unhandled 'error' events
+    }
     this.emitter.emit('*', event);
 
     if (durable) {
