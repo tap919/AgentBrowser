@@ -1,5 +1,26 @@
 import { agentEventBus } from '@/lib/agent-event-bus';
 
+function assertEnv(opts: { service: string; required?: string[]; recommended?: string[] }) {
+  const missing: string[] = [];
+  for (const key of opts.required ?? []) {
+    if (!process.env[key]) missing.push(key);
+  }
+  for (const key of opts.recommended ?? []) {
+    if (!process.env[key]) console.warn(`[env] Missing recommended env var: ${key} (service: ${opts.service})`);
+  }
+  if (missing.length) {
+    console.error(`[env] Missing required env vars for ${opts.service}: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
+// Startup env validation
+assertEnv({
+  service: 'AgentBrowser',
+  required: ['AGENT_API_KEY'],
+  recommended: ['MUTLY_URL', 'VIBESERVE_URL', 'REPORANK_URL', 'CLAW_PROTECT_URL'],
+});
+
 // Shared API key used across all services.
 // Set via AGENT_API_KEY env var — must match MUTLY_API_KEY.
 const MASTER_API_KEY = typeof process !== 'undefined' ? (process.env.AGENT_API_KEY || '') : '';

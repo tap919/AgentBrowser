@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx vitest run src/ --reporter=verbose
+        env:
+          NODE_ENV: test
+          JWT_SECRET: "test-secret-32-chars-minimum-ok-for-ci"
+          DATABASE_URL: "file:./test.db"
+          AGENT_API_KEY: "test-agent-api-key-32-chars-minimum"
+          OVERLAY_MASTER_KEY: "test-overlay-master-key-32-chars"
+          MUTLY_URL: "http://localhost:4000"
+          VIBESERVE_URL: "http://localhost:8000"
+          REPORANK_URL: "http://localhost:3001"
+          CLAW_PROTECT_URL: "http://localhost:3333"
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx eslint src/lib/service-hub.ts src/lib/api-auth-middleware.ts src/lib/mutly-client.ts src/lib/vibeserve-client.ts
