@@ -15,7 +15,8 @@ function safeCompare(a: string, b: string): boolean {
   }
 }
 
-export function apiAuthMiddleware(handler: Function) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function apiAuthMiddleware(handler: (request: any, ...args: any[]) => Promise<Response> | Response) {
   return async (request: Request, ...args: unknown[]) => {
     if (!API_KEY) {
       return NextResponse.json({ error: 'Service Unavailable: API key not configured' }, { status: 503 });

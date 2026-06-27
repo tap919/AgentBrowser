@@ -164,7 +164,7 @@ export async function executeVibeServeTool(tool: string, params: Record<string, 
     const body = await res.json();
     if (!res.ok) throw new Error(body.error || `VibeServe via Mutly: ${res.status}`);
     return body.result ?? body;
-  } catch (err: unknown) {
+  } catch {
     // Fallback: direct VibeServe call
     const vs = requireService('vibeserve');
     const directRes = await fetch(`http://127.0.0.1:${vs.port}/tools/${tool}`, {
@@ -207,7 +207,7 @@ export async function rankProject(projectPath: string): Promise<unknown> {
     return {
       score: scanData.result?.overallScore ?? 50,
       quality: scanData.result?.gradeCategory ?? 'unknown',
-      issues: scanData.result?.findings?.map((f: any) => f.title) ?? [],
+      issues: (scanData.result?.findings as Array<{ title: string }>)?.map((f) => f.title) ?? [],
     };
   } catch {
     // Fallback: direct RepoRank call
@@ -223,7 +223,7 @@ export async function rankProject(projectPath: string): Promise<unknown> {
     return {
       score: directData.result?.overallScore ?? 50,
       quality: directData.result?.gradeCategory ?? 'unknown',
-      issues: directData.result?.findings?.map((f: any) => f.title) ?? [],
+      issues: (directData.result?.findings as Array<{ title: string }>)?.map((f) => f.title) ?? [],
     };
   }
 }
